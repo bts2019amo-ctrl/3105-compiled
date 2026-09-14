@@ -369,11 +369,13 @@ final class LicenseManager: ObservableObject {
         ]
         let update = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if update == errSecSuccess { return }
-        guard update == errSecItemNotFound else { throw URLError(.cannotSaveFile) }
+        guard update == errSecItemNotFound else {
+            throw NSError(domain: "LicenseManager", code: -1)
+        }
         var item = query
         attributes.forEach { item[$0.key] = $0.value }
         guard SecItemAdd(item as CFDictionary, nil) == errSecSuccess else {
-            throw URLError(.cannotSaveFile)
+            throw NSError(domain: "LicenseManager", code: -1)
         }
     }
 
