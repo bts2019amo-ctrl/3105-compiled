@@ -8,9 +8,9 @@ enum AppTheme {
                 : UIColor(red: 0.85, green: 0.42, blue: 0.20, alpha: 1.00)
         }
     )
-    static let pageBackground = Color(uiColor: .systemBackground)
-    static let consoleBackground = Color(uiColor: .secondarySystemBackground)
-    static let pageInset: CGFloat = 16
+    static let pageBackground = Color(uiColor: .systemGroupedBackground)
+    static let consoleBackground = Color(uiColor: .secondarySystemGroupedBackground)
+    static let pageInset: CGFloat = 20
     static let rowIconSize: CGFloat = 17
     static let rowIconFrame: CGFloat = 28
     static let fileRowIconSize: CGFloat = 17
@@ -19,7 +19,7 @@ enum AppTheme {
     static let appIconSize: CGFloat = 32
     static let emptyIconSize: CGFloat = 30
     static let selectionIconSize: CGFloat = 18
-    static let contentCardCornerRadius: CGFloat = 20
+    static let contentCardCornerRadius: CGFloat = 24
     static let contentCardInset: CGFloat = 16
     static let contentCardPadding: CGFloat = 16
 }
@@ -31,9 +31,14 @@ struct AppCardBorder: View {
             style: .continuous
         )
         .strokeBorder(
-            Color(uiColor: .separator).opacity(0.22),
-            lineWidth: 0.5
+            LinearGradient(
+                colors: [Color.white.opacity(0.72), AppTheme.accent.opacity(0.24), Color.white.opacity(0.14)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            lineWidth: 0.8
         )
+        .shadow(color: Color.black.opacity(0.08), radius: 18, y: 8)
         .accessibilityHidden(true)
     }
 }
@@ -89,9 +94,10 @@ struct AppSearchField: View {
         }
         .padding(.horizontal, 11)
         .frame(minHeight: 36)
-        .background(
-            Color(uiColor: .secondarySystemFill),
-            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.34), lineWidth: 0.7)
         )
         .padding(.horizontal, AppTheme.pageInset)
         .padding(.vertical, 8)
