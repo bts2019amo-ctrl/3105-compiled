@@ -17,65 +17,30 @@ struct PatchProjectsView: View {
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
-    @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
     @State private var showCreate = false
     @State private var showImporter = false
     @State private var showWallpaperImporter = false
-    @State private var showCleaner = false
-    @State private var searchText = ""
     @State private var wallpaperPackages: [WallpaperStagedPackage] = []
     @State private var wallpaperImportFeedback: WallpaperImportFeedback?
     @State private var wallpaperPendingDeletion: WallpaperStagedPackage?
     @State private var isImportingWallpapers = false
     @State private var showSimulatedWallpaperDetail = false
     @State private var simulatedWallpaperDetailGate = OneShotPresentationGate()
-    @State private var selectedCollection = "Installed"
-    @State private var showBackups = true
-    @State private var showSystemFiles = false
-    @State private var secureMode = true
+    @State private var selectedCollection = "FF NORMAL"
+    @AppStorage("externalTheme") private var externalTheme = "purple"
     let onOpenSettings: () -> Void
     let onOpenLogs: () -> Void
 
     private var filteredItems: [PatchLibraryItem] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return store.items }
-        return store.items.filter { item in
-            if item.packageURL.lastPathComponent.localizedCaseInsensitiveContains(query) {
-                return true
-            }
-            guard let project = item.project else { return false }
-            if project.name.localizedCaseInsensitiveContains(query)
-                || project.author.localizedCaseInsensitiveContains(query) {
-                return true
-            }
-            guard item.canInspectContents else { return false }
-            return project.allBundleIdentifiers.contains {
-                    $0.localizedCaseInsensitiveContains(query)
-                }
-                || project.directories.contains {
-                    $0.relativePath.localizedCaseInsensitiveContains(query)
-                }
-                || project.rules.contains {
-                    $0.relativePath.localizedCaseInsensitiveContains(query)
-                        || $0.replacementFilename.localizedCaseInsensitiveContains(query)
-                }
-        }
+        store.items
     }
 
     private var filteredWallpaperPackages: [WallpaperStagedPackage] {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return wallpaperPackages }
-        return wallpaperPackages.filter {
-            $0.displayName.localizedCaseInsensitiveContains(query)
-        }
+        wallpaperPackages
     }
 
     private var hasLocalContent: Bool {
         !store.items.isEmpty || !wallpaperPackages.isEmpty
-    }
-
-    private var hasSearchResults: Bool {
-        !filteredItems.isEmpty || !filteredWallpaperPackages.isEmpty
     }
 
     init(
@@ -97,7 +62,6 @@ struct PatchProjectsView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     installedHeader
                     accessBanner
-                    installedSearch
                     selectionCard
                     compatibilityCard
                     if !filteredItems.isEmpty || !filteredWallpaperPackages.isEmpty {
@@ -105,8 +69,6 @@ struct PatchProjectsView: View {
                     } else {
                         emptyInstalledCard
                     }
-                    legitimateControls
-                    if cleanerEnabled { cleanerCard }
                     footerSignature
                 }
                 .padding(.horizontal, AppTheme.pageInset)
@@ -118,9 +80,14 @@ struct PatchProjectsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: onOpenSettings) {
-                        Image(systemName: "gearshape.fill")
-                    }
+                    Menu {
+                        Button { externalTheme = "purple" } label: {
+                            Label("Roxo", systemImage: externalTheme == "purple" ? "checkmark" : "circle")
+                        }
+                        Button { externalTheme = "white" } label: {
+                            Label("Branco", systemImage: externalTheme == "white" ? "checkmark" : "circle")
+                        }
+                    } label: { Image(systemName: "gearshape.fill") }
                 }
                 ToolbarItem(placement: .navigationBarLeading) { Text("EXTERNAL iOS").font(.headline.weight(.bold)) }
             }
@@ -149,9 +116,6 @@ struct PatchProjectsView: View {
                 ) { project, password in
                     store.create(project: project, password: password)
                 }
-            }
-            .sheet(isPresented: $showCleaner) {
-                CleanerView()
             }
             .sheet(item: $draftCoordinator.request) { request in
                 PatchProjectEditorView(
@@ -266,26 +230,12 @@ struct PatchProjectsView: View {
         .shadow(color: AppTheme.accent.opacity(0.18), radius: 20, y: 9)
     }
 
-    private var installedSearch: some View {
-        HStack(spacing: 9) {
-            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-            TextField("Search installed content", text: $searchText)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-            if !searchText.isEmpty { Button { searchText = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }.buttonStyle(.plain) }
-        }
-        .padding(.horizontal, 13)
-        .frame(minHeight: 43)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Color.white.opacity(0.2), lineWidth: 0.7) }
-    }
-
     private var selectionCard: some View {
         VStack(alignment: .leading, spacing: 13) {
             Label("SELECT COLLECTION", systemImage: "square.grid.2x2.fill").font(.caption.weight(.bold)).tracking(1.1).foregroundStyle(.secondary)
             HStack(spacing: 10) {
-                collectionButton(title: "Projects", icon: "shippingbox.fill")
-                collectionButton(title: "Wallpapers", icon: "photo.fill")
+                collectionButton(title: "FF NORMAL", icon: "gamecontroller.fill")
+                collectionButton(title: "FF MAX", icon: "gamecontroller.fill")
             }
         }
         .padding(16)
@@ -293,15 +243,15 @@ struct PatchProjectsView: View {
     }
 
     private func collectionButton(title: String, icon: String) -> some View {
-        Button { withAnimation(.easeInOut(duration: 0.18)) { selectedCollection = title == "Projects" ? "Installed" : "Wallpapers" } } label: {
+        Button { withAnimation(.easeInOut(duration: 0.18)) { selectedCollection = title } } label: {
             HStack(spacing: 8) {
                 Image(systemName: icon).font(.subheadline)
                 Text(title).font(.subheadline.weight(.semibold))
                 Spacer()
-                if (title == "Projects" && selectedCollection == "Installed") || (title == "Wallpapers" && selectedCollection == "Wallpapers") { Image(systemName: "checkmark.circle.fill").foregroundStyle(AppTheme.accent) }
+                if selectedCollection == title { Image(systemName: "checkmark.circle.fill").foregroundStyle(AppTheme.accent) }
             }
             .padding(.horizontal, 12).frame(minHeight: 48)
-            .background((title == "Projects" && selectedCollection == "Installed") || (title == "Wallpapers" && selectedCollection == "Wallpapers") ? AppTheme.accent.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .background(selectedCollection == title ? AppTheme.accent.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -325,8 +275,8 @@ struct PatchProjectsView: View {
 
     private var installedContentCard: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(selectedCollection == "Wallpapers" ? "WALLPAPERS" : "INSTALLED CONTENT").font(.caption2.weight(.bold)).tracking(1.2).foregroundStyle(.secondary).padding(.horizontal, 4).padding(.bottom, 5)
-            if selectedCollection == "Wallpapers" {
+            Text(selectedCollection).font(.caption2.weight(.bold)).tracking(1.2).foregroundStyle(.secondary).padding(.horizontal, 4).padding(.bottom, 5)
+            if selectedCollection == "FF MAX" {
                 ForEach(filteredWallpaperPackages) { package in wallpaperRow(package).padding(.vertical, 5) }
             } else {
                 ForEach(filteredItems) { item in itemRow(item).padding(.vertical, 5) }
@@ -341,37 +291,11 @@ struct PatchProjectsView: View {
             Image(systemName: "tray.full.fill").font(.system(size: 28)).foregroundStyle(AppTheme.accent)
             Text("Nothing installed yet").font(.headline)
             Text("Import a legitimate project or wallpaper package to see it here.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            HStack(spacing: 9) {
-                Button { showCreate = true } label: { Label("New project", systemImage: "plus") }.buttonStyle(.borderedProminent).tint(AppTheme.accent)
-                Button { showImporter = true } label: { Label("Import", systemImage: "square.and.arrow.down") }.buttonStyle(.bordered)
-            }
+            Button { showImporter = true } label: { Label("Import", systemImage: "square.and.arrow.down") }.buttonStyle(.borderedProminent).tint(AppTheme.accent)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 26).padding(.horizontal, 16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
     }
-
-    private var legitimateControls: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("CONFIGURATION").font(.caption2.weight(.bold)).tracking(1.2).foregroundStyle(.secondary).padding(.horizontal, 4).padding(.bottom, 7)
-            settingToggle(title: "Keep backups", subtitle: "Save originals before changes", icon: "archivebox.fill", value: $showBackups)
-            settingToggle(title: "Show system files", subtitle: "Include protected containers", icon: "folder.fill", value: $showSystemFiles)
-            settingToggle(title: "Secure mode", subtitle: "Require confirmation for changes", icon: "lock.shield.fill", value: $secureMode)
-        }
-    }
-
-    private func settingToggle(title: String, subtitle: String, icon: String, value: Binding<Bool>) -> some View {
-        HStack(spacing: 11) {
-            AppRowIcon(systemName: icon)
-            VStack(alignment: .leading, spacing: 3) { Text(title).font(.subheadline.weight(.semibold)); Text(subtitle).font(.caption).foregroundStyle(.secondary) }
-            Spacer()
-            Toggle("", isOn: value).labelsHidden().tint(AppTheme.accent)
-        }
-        .padding(.horizontal, 13).padding(.vertical, 11)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.13), lineWidth: 0.6) }
-    }
-
-    private var cleanerCard: some View { Button { showCleaner = true } label: { HStack { AppRowIcon(systemName: "broom.fill"); VStack(alignment: .leading, spacing: 3) { Text("Clear temporary files").font(.subheadline.weight(.semibold)); Text("Free space used by app cache").font(.caption).foregroundStyle(.secondary) }; Spacer(); Image(systemName: "chevron.right").foregroundStyle(.tertiary) }.padding(13) }.buttonStyle(.plain).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
 
     private var footerSignature: some View { HStack { Text("EXTERNAL iOS").font(.caption2.weight(.bold)).tracking(1.1); Spacer(); Text("SECURE · SIMPLE · READY").font(.caption2.weight(.semibold)).tracking(0.7).foregroundStyle(.secondary) }.foregroundStyle(AppTheme.accent).padding(.top, 5) }
 
@@ -403,31 +327,6 @@ struct PatchProjectsView: View {
             }
         }
         .padding(.vertical, 4)
-    }
-
-    private var cleanerRow: some View {
-        Button {
-            showCleaner = true
-        } label: {
-            HStack(spacing: 12) {
-                AppRowIcon(systemName: "sparkles")
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(language.text("tab.cleaner"))
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Text(language.text("repository.cleaner_subtitle"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-                    .accessibilityHidden(true)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
     }
 
     private var wallpaperSymbol: String {
