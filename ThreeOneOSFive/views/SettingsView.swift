@@ -51,7 +51,6 @@ struct SettingsView: View {
                     .padding(.horizontal, 20).padding(.top, 15).padding(.bottom, 30)
                 }
                 .frame(maxWidth: .infinity)
-            }
             .background(AppTheme.pageBackground.ignoresSafeArea())
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
