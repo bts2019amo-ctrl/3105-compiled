@@ -16,9 +16,17 @@ enum AppTheme {
     private static var remoteAccent: Color?
     static var accent: Color {
         get {
-            remoteAccent ?? (UserDefaults.standard.string(forKey: "externalTheme") == "white"
-                ? .white
-                : Color(uiColor: UIColor(red: 0.64, green: 0.31, blue: 0.98, alpha: 1.00)))
+            if let remoteAccent { return remoteAccent }
+            switch UserDefaults.standard.string(forKey: "externalTheme") ?? "purple" {
+            case "blue": return Color(uiColor: .systemBlue)
+            case "cyan": return Color(uiColor: .systemTeal)
+            case "green": return Color(uiColor: .systemGreen)
+            case "orange": return Color(uiColor: .systemOrange)
+            case "red": return Color(uiColor: .systemRed)
+            case "pink": return Color(uiColor: .systemPink)
+            case "white": return .white
+            default: return Color(uiColor: UIColor(red: 0.64, green: 0.31, blue: 0.98, alpha: 1.00))
+            }
         }
         set { remoteAccent = newValue }
     }
@@ -85,18 +93,16 @@ struct LiquidGlassToggleStyle: ToggleStyle {
         } label: {
             ZStack(alignment: configuration.isOn ? .trailing : .leading) {
                 Capsule(style: .continuous)
-                    .fill(configuration.isOn ? AppTheme.accent.opacity(0.82) : Color.white.opacity(0.16))
-                    .overlay(Capsule().stroke(Color.white.opacity(0.38), lineWidth: 0.8))
+                    .fill(configuration.isOn ? AppTheme.accent : Color(uiColor: .systemGray4))
                     .frame(width: 52, height: 31)
                     .shadow(
-                        color: configuration.isOn ? AppTheme.accent.opacity(0.34) : .clear,
-                        radius: 9,
-                        y: 3
+                        color: .black.opacity(0.14),
+                        radius: 4,
+                        y: 2
                     )
                 Circle()
-                    .fill(.ultraThinMaterial)
-                    .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 0.7))
-                    .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+                    .fill(Color.white)
+                    .shadow(color: .black.opacity(0.2), radius: 2, y: 1)
                     .frame(width: 27, height: 27)
                     .padding(2)
                     .scaleEffect(configuration.isOn ? 1.0 : 0.94)
@@ -163,7 +169,7 @@ struct AppRowIcon: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(.ultraThinMaterial)
+                .fill(Color.white.opacity(0.08))
                 .overlay {
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .fill(tint.opacity(0.12))

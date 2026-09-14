@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import AVFoundation
 
 struct ContentView: View {
     @Environment(\.appLanguage) private var language
@@ -46,12 +45,8 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            RemoteBackdropView(
-                imageURL: remoteControl.backgroundURL,
-                videoURL: remoteControl.backgroundVideoURL,
-                color: remoteControl.backgroundColor
-            )
-            .ignoresSafeArea()
+            AppTheme.pageGradient
+                .ignoresSafeArea()
 
             Group {
                 if horizontalSizeClass == .regular {
@@ -247,80 +242,6 @@ private extension AppSection {
         case .installed: return "tray.full.fill"
         case .files: return "folder.fill"
         case .search: return "magnifyingglass"
-        }
-    }
-}
-
-struct RemoteBackdropView: View {
-    let imageURL: URL?
-    let videoURL: URL?
-    let color: Color
-
-    var body: some View {
-        ZStack {
-            color
-            if let videoURL {
-                LoopingRemoteVideo(url: videoURL)
-            } else if let imageURL {
-                AsyncImage(url: imageURL) { phase in
-                    if case .success(let image) = phase {
-                        image.resizable().scaledToFill()
-                    }
-                }
-            }
-            Color.black.opacity(0.24)
-        }
-        .clipped()
-    }
-}
-
-private struct LoopingRemoteVideo: UIViewRepresentable {
-    let url: URL
-
-    func makeUIView(context: Context) -> PlayerView {
-        let view = PlayerView()
-        view.set(url: url)
-        return view
-    }
-
-    func updateUIView(_ uiView: PlayerView, context: Context) {
-        uiView.set(url: url)
-    }
-
-    final class PlayerView: UIView {
-        private let player = AVPlayer()
-        private var currentURL: URL?
-        private var endObserver: NSObjectProtocol?
-
-        override class var layerClass: AnyClass { AVPlayerLayer.self }
-        private var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
-
-        override init(frame: CGRect) {
-            super.init(frame: frame)
-            playerLayer.player = player
-            playerLayer.videoGravity = .resizeAspectFill
-            endObserver = NotificationCenter.default.addObserver(
-                forName: .AVPlayerItemDidPlayToEndTime,
-                object: nil,
-                queue: .main
-            ) { [weak self] note in
-                guard let self, note.object as? AVPlayerItem === self.player.currentItem else { return }
-                self.player.seek(to: .zero)
-                self.player.play()
-            }
-        }
-
-        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-        func set(url: URL) {
-            guard currentURL != url else { return }
-            currentURL = url
-            player.replaceCurrentItem(with: AVPlayerItem(url: url))
-            player.play()
-        }
-
-        deinit {
-            if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
         }
     }
 }

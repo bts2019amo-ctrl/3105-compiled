@@ -3,7 +3,6 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
-    @EnvironmentObject private var remoteControl: RemoteControlService
     @AppStorage("externalTheme") private var theme = "purple"
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
     @AppStorage(FeatureVisibility.developerModeStorageKey) private var developerModeEnabled = false
@@ -12,15 +11,8 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                RemoteBackdropView(
-                    imageURL: remoteControl.backgroundURL,
-                    videoURL: remoteControl.backgroundVideoURL,
-                    color: remoteControl.backgroundColor
-                )
-                .ignoresSafeArea()
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
                     settingsHero
                     settingsSection(title: "APPEARANCE") {
                         themeRow
@@ -28,6 +20,12 @@ struct SettingsView: View {
                             Menu {
                                 Button { theme = "purple" } label: { Label("Purple", systemImage: theme == "purple" ? "checkmark" : "paintpalette") }
                                 Button { theme = "white" } label: { Label("White", systemImage: theme == "white" ? "checkmark" : "circle.fill") }
+                                Button { theme = "blue" } label: { Label("Blue", systemImage: theme == "blue" ? "checkmark" : "circle.fill") }
+                                Button { theme = "cyan" } label: { Label("Cyan", systemImage: theme == "cyan" ? "checkmark" : "circle.fill") }
+                                Button { theme = "green" } label: { Label("Green", systemImage: theme == "green" ? "checkmark" : "circle.fill") }
+                                Button { theme = "orange" } label: { Label("Orange", systemImage: theme == "orange" ? "checkmark" : "circle.fill") }
+                                Button { theme = "red" } label: { Label("Red", systemImage: theme == "red" ? "checkmark" : "circle.fill") }
+                                Button { theme = "pink" } label: { Label("Pink", systemImage: theme == "pink" ? "checkmark" : "circle.fill") }
                             } label: {
                                 HStack(spacing: 4) { Text(theme == "white" ? "White" : "Purple"); Image(systemName: "chevron.up.chevron.down") }
                                     .font(.subheadline.weight(.semibold)).foregroundStyle(themeAccent)
@@ -50,10 +48,11 @@ struct SettingsView: View {
                     }
                     HStack { Spacer(); Text("EXTERNAL iOS · SECURE · SIMPLE · READY").font(.caption2.weight(.bold)).tracking(1).foregroundStyle(.secondary); Spacer() }.padding(.top, 5)
                 }
-                        .padding(.horizontal, 20).padding(.top, 15).padding(.bottom, 30)
-                    }
-                    .frame(maxWidth: .infinity)
+                    .padding(.horizontal, 20).padding(.top, 15).padding(.bottom, 30)
+                }
+                .frame(maxWidth: .infinity)
             }
+            .background(AppTheme.pageBackground.ignoresSafeArea())
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Done") { dismiss() }.fontWeight(.semibold).foregroundStyle(themeAccent) } }
@@ -85,6 +84,12 @@ struct SettingsView: View {
             Menu {
                 Button { theme = "purple" } label: { Label("Purple", systemImage: theme == "purple" ? "checkmark" : "paintpalette") }
                 Button { theme = "white" } label: { Label("White", systemImage: theme == "white" ? "checkmark" : "circle.fill") }
+                Button { theme = "blue" } label: { Label("Blue", systemImage: theme == "blue" ? "checkmark" : "circle.fill") }
+                Button { theme = "cyan" } label: { Label("Cyan", systemImage: theme == "cyan" ? "checkmark" : "circle.fill") }
+                Button { theme = "green" } label: { Label("Green", systemImage: theme == "green" ? "checkmark" : "circle.fill") }
+                Button { theme = "orange" } label: { Label("Orange", systemImage: theme == "orange" ? "checkmark" : "circle.fill") }
+                Button { theme = "red" } label: { Label("Red", systemImage: theme == "red" ? "checkmark" : "circle.fill") }
+                Button { theme = "pink" } label: { Label("Pink", systemImage: theme == "pink" ? "checkmark" : "circle.fill") }
             } label: { Circle().fill(themeAccent).frame(width: 22, height: 22).overlay { Circle().stroke(Color.white.opacity(0.45), lineWidth: 1) } }
         }
         .padding(.vertical, 8)
@@ -107,5 +112,5 @@ private struct ToggleRow: View {
     let subtitle: String
     @Binding var isOn: Bool
     let tint: Color
-    var body: some View { HStack(spacing: 11) { AppRowIcon(systemName: icon, tint: tint); VStack(alignment: .leading, spacing: 3) { Text(title).font(.subheadline.weight(.semibold)); Text(subtitle).font(.caption).foregroundStyle(.secondary) }; Spacer(); Toggle("", isOn: $isOn).labelsHidden().tint(tint) }.padding(.vertical, 8) }
+    var body: some View { HStack(spacing: 11) { AppRowIcon(systemName: icon, tint: tint); VStack(alignment: .leading, spacing: 3) { Text(title).font(.subheadline.weight(.semibold)); Text(subtitle).font(.caption).foregroundStyle(.secondary) }; Spacer(); Toggle("", isOn: $isOn).labelsHidden().tint(tint).toggleStyle(LiquidGlassToggleStyle()) }.padding(.vertical, 8) }
 }

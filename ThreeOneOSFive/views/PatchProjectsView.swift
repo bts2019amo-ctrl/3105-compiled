@@ -70,7 +70,7 @@ struct PatchProjectsView: View {
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 18) {
+                LazyVStack(alignment: .leading, spacing: 18) {
                     selectionCard
                     compatibilityCard
                     if hasLocalContent {
@@ -324,7 +324,6 @@ struct PatchProjectsView: View {
                 .stroke(Color.white.opacity(0.22), lineWidth: 0.7)
         }
         .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     private func wallpaperRow(_ package: WallpaperStagedPackage) -> some View {
@@ -504,6 +503,14 @@ private struct ThemeSelectionPopover: View {
                 tint: .white,
                 icon: "sun.max.fill"
             )
+            HStack(spacing: 10) {
+                colorDot("blue", .blue, "Azul")
+                colorDot("cyan", .cyan, "Ciano")
+                colorDot("green", .green, "Verde")
+                colorDot("orange", .orange, "Laranja")
+                colorDot("red", .red, "Vermelho")
+                colorDot("pink", .pink, "Rosa")
+            }
         }
         .padding(18)
         .frame(width: 286)
@@ -573,6 +580,33 @@ private struct ThemeSelectionPopover: View {
                         lineWidth: 0.8
                     )
             }
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(response: 0.36, dampingFraction: 0.78), value: selectedTheme)
+    }
+
+    private func colorDot(_ value: String, _ color: Color, _ label: String) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.78)) {
+                selectedTheme = value
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            Circle()
+                .fill(color)
+                .frame(width: 27, height: 27)
+                .overlay {
+                    Circle().stroke(Color.white.opacity(0.7), lineWidth: selectedTheme == value ? 2.2 : 0.8)
+                }
+                .overlay {
+                    if selectedTheme == value {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .shadow(color: color.opacity(0.45), radius: selectedTheme == value ? 6 : 0)
+                .accessibilityLabel(label)
         }
         .buttonStyle(.plain)
         .animation(.spring(response: 0.36, dampingFraction: 0.78), value: selectedTheme)
