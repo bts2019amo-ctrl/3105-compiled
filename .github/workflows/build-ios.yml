@@ -1,0 +1,57 @@
+name: Build iOS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Detect project
+        id: detect
+        shell: bash
+        run: |
+          set -e
+          workspace=$(find . -maxdepth 3 -name '*.xcworkspace' -print -quit)
+          project=$(find . -maxdepth 3 -name '*.xcodeproj' -print -quit)
+          if [[ -n "$workspace" ]]; then
+            echo "kind=workspace" >> "$GITHUB_OUTPUT"
+            echo "path=$workspace" >> "$GITHUB_OUTPUT"
+          elif [[ -n "$project" ]]; then
+            echo "kind=project" >> "$GITHUB_OUTPUT"
+            echo "path=$project" >> "$GITHUB_OUTPUT"
+          else
+            echo 'Nenhum .xcodeproj ou .xcworkspace encontrado.' >&2
+            exit 1
+          fi
+      - name: List schemes
+        shell: bash
+        run: |
+          if [[ "${{ steps.detect.outputs.kind }}" == "workspace" ]]; then
+            xcodebuild -list -workspace "${{ steps.detect.outputs.path }}"
+          else
+            xcodebuild -list -project "${{ steps.detect.outputs.path }}"
+          fi
+      - name: Build without signing
+        shell: bash
+        run: |
+          set -e
+          path="${{ steps.detect.outputs.path }}"
+          scheme=$(basename "$path" | sed -E 's/\\.(xcworkspace|xcodeproj)$//')
+          if [[ "${{ steps.detect.outputs.kind }}" == "workspace" ]]; then
+            xcodebuild -workspace "$path" -scheme "$scheme" -configuration Release -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+          else
+            xcodebuild -project "$path" -scheme "$scheme" -configuration Release -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+          fi
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: build/Build/Products/Release-iphonesimulator
+          if-no-files-found: error
