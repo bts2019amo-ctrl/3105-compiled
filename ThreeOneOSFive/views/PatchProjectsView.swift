@@ -48,7 +48,9 @@ struct PatchProjectsView: View {
     }
 
     private var hasLocalContent: Bool {
-        !store.items.isEmpty || !wallpaperPackages.isEmpty
+        !store.items.isEmpty
+            || !wallpaperPackages.isEmpty
+            || !remotePatchesForSelection.isEmpty
     }
 
     init(

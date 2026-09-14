@@ -67,7 +67,6 @@ final class RemoteControlService: ObservableObject {
     private var lastPayloadSignature = ""
     private let managedKey = "external-system.remote-managed-filenames"
     private let disabledKey = "external-system.remote-disabled-filenames"
-    private let enabledKey = "external-system.remote-enabled-filenames"
 
     @Published private(set) var backgroundURL: URL?
     @Published private(set) var backgroundVideoURL: URL?
@@ -179,12 +178,11 @@ final class RemoteControlService: ObservableObject {
         guard isAuthorized else { return }
         guard let root = try? PatchProjectLibrary.packageRootURL() else { return }
         let disabled = Set(UserDefaults.standard.stringArray(forKey: disabledKey) ?? [])
-        let locallyEnabled = Set(UserDefaults.standard.stringArray(forKey: enabledKey) ?? [])
-        let active = Set(patches.filter { $0.enabled && locallyEnabled.contains($0.filename) }.map(\.filename))
+        let active = Set(patches.filter { $0.enabled && !disabled.contains($0.filename) }.map(\.filename))
         var managed = Set(UserDefaults.standard.stringArray(forKey: managedKey) ?? [])
         for patch in patches where patch.enabled {
             guard isAuthorized else { return }
-            if disabled.contains(patch.filename) || !locallyEnabled.contains(patch.filename) { continue }
+            if disabled.contains(patch.filename) { continue }
             do {
                 let url = root.appendingPathComponent(patch.filename)
                 let exists = FileManager.default.fileExists(atPath: url.path)
@@ -214,21 +212,18 @@ final class RemoteControlService: ObservableObject {
     }
 
     func isPatchActive(_ patch: RemotePatchInfo) -> Bool {
-        Set(UserDefaults.standard.stringArray(forKey: enabledKey) ?? []).contains(patch.filename)
+        !Set(UserDefaults.standard.stringArray(forKey: disabledKey) ?? []).contains(patch.filename)
     }
 
     func setPatchActive(_ patch: RemotePatchInfo, active: Bool) {
         var disabled = Set(UserDefaults.standard.stringArray(forKey: disabledKey) ?? [])
-        var enabled = Set(UserDefaults.standard.stringArray(forKey: enabledKey) ?? [])
         let root = try? PatchProjectLibrary.packageRootURL()
         let url = root?.appendingPathComponent(patch.filename)
         if active {
             disabled.remove(patch.filename)
-            enabled.insert(patch.filename)
             refreshNow()
         } else {
             disabled.insert(patch.filename)
-            enabled.remove(patch.filename)
             if let item = PatchProjectLibrary.load().first(where: { $0.packageURL.lastPathComponent == patch.filename }) {
                 if let project = item.project, let receipt = DevicePatchService.latestReceipt(projectID: project.id) {
                     try? DevicePatchService.restore(receipt: receipt)
@@ -238,7 +233,6 @@ final class RemoteControlService: ObservableObject {
             if let url { try? FileManager.default.removeItem(at: url) }
         }
         UserDefaults.standard.set(Array(disabled), forKey: disabledKey)
-        UserDefaults.standard.set(Array(enabled), forKey: enabledKey)
         DispatchQueue.main.async { NotificationCenter.default.post(name: Self.patchesDidChange, object: nil) }
     }
 
