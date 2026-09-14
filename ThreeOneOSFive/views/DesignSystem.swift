@@ -1,12 +1,17 @@
 import SwiftUI
 
 enum AppTheme {
+    private static var remoteAccent: Color?
     static var accent: Color {
-        UserDefaults.standard.string(forKey: "externalTheme") == "white"
-            ? .white
-            : Color(uiColor: UIColor(red: 0.64, green: 0.31, blue: 0.98, alpha: 1.00))
+        get {
+            remoteAccent ?? (UserDefaults.standard.string(forKey: "externalTheme") == "white"
+                ? .white
+                : Color(uiColor: UIColor(red: 0.64, green: 0.31, blue: 0.98, alpha: 1.00)))
+        }
+        set { remoteAccent = newValue }
     }
-    static let pageBackground = Color(uiColor: UIColor(red: 0.055, green: 0.04, blue: 0.09, alpha: 1.00))
+    static var secondaryAccent = Color.white
+    static var pageBackground = Color(uiColor: UIColor(red: 0.055, green: 0.04, blue: 0.09, alpha: 1.00))
     static let consoleBackground = Color(uiColor: UIColor(red: 0.09, green: 0.07, blue: 0.14, alpha: 1.00))
     static let glassBase = Color(uiColor: UIColor(red: 0.11, green: 0.08, blue: 0.16, alpha: 1.00))
     static let glassHighlight = Color.white.opacity(0.42)

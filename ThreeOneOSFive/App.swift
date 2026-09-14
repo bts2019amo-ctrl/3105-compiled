@@ -11,6 +11,7 @@ struct ThreeOneOSFiveApp: App {
     @StateObject private var patchStore = PatchProjectStore()
     @StateObject private var repositoryStore = PackageRepositoryStore()
     @StateObject private var licenseManager = LicenseManager()
+    @StateObject private var remoteControl = RemoteControlService()
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
     @State private var showLaunchSequence = true
     @State private var showAttribution = false
@@ -48,6 +49,7 @@ struct ThreeOneOSFiveApp: App {
                 } else {
                     ContentView()
                         .environmentObject(appState)
+                        .environmentObject(remoteControl)
                         .environmentObject(patchDraftCoordinator)
                         .environmentObject(fileOperationCoordinator)
                         .environmentObject(patchStore)
@@ -94,14 +96,19 @@ struct ThreeOneOSFiveApp: App {
             }
             .onAppear {
                 licenseManager.refresh()
+                remoteControl.setAuthorized(licenseManager.isAuthorized)
                 if licenseManager.isAuthorized, !showLaunchSequence {
                     appState.detectSupport()
                     checkForUpdate()
                 }
             }
+            .onChange(of: licenseManager.isAuthorized) { authorized in
+                remoteControl.setAuthorized(authorized)
+            }
             .onChange(of: scenePhase) { phase in
                 guard phase == .active else { return }
                 licenseManager.refresh()
+                remoteControl.setAuthorized(licenseManager.isAuthorized)
                 guard licenseManager.isAuthorized, !showLaunchSequence else { return }
                 appState.detectSupport()
             }
@@ -225,7 +232,7 @@ final class LicenseManager: ObservableObject {
     @Published private(set) var isAuthorized = false
     @Published private(set) var message: String?
 
-    private let endpoint = "https://3000-iku427nolwa29c4yhk9fq-90cae584.us4.manus.computer/api/trpc/android.validateKey"
+    private let endpoint = EndpointVault.licenseURLString
     private let keychainService = "com.apple.mobile.MobileHouseArrest.activation"
     private let keychainAccount = "license-key"
     private var storedKey: String?
