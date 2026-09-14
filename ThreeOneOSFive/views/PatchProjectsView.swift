@@ -72,7 +72,7 @@ struct PatchProjectsView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     selectionCard
                     compatibilityCard
-                    if !filteredItems.isEmpty || !filteredWallpaperPackages.isEmpty {
+                    if hasLocalContent {
                         installedContentCard
                     } else {
                         emptyInstalledCard
