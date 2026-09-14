@@ -25,6 +25,7 @@ struct PatchProjectsView: View {
     @State private var isImportingWallpapers = false
     @State private var showSimulatedWallpaperDetail = false
     @State private var simulatedWallpaperDetailGate = OneShotPresentationGate()
+    @State private var showThemeMenu = false
     @State private var selectedCollection = "FF NORMAL"
     @AppStorage("externalTheme") private var externalTheme = "purple"
     let onOpenSettings: () -> Void
@@ -88,14 +89,27 @@ struct PatchProjectsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button { externalTheme = "purple" } label: {
-                            Label("Roxo", systemImage: externalTheme == "purple" ? "checkmark" : "circle")
+                    Button {
+                        withAnimation(.spring(response: 0.36, dampingFraction: 0.82)) {
+                            showThemeMenu.toggle()
                         }
-                        Button { externalTheme = "white" } label: {
-                            Label("Branco", systemImage: externalTheme == "white" ? "checkmark" : "circle")
-                        }
-                    } label: { Image(systemName: "gearshape.fill") }
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .frame(width: 38, height: 38)
+                            .background(.ultraThinMaterial, in: Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.42), lineWidth: 0.8))
+                            .shadow(color: AppTheme.accent.opacity(0.18), radius: 10, y: 4)
+                            .rotationEffect(.degrees(showThemeMenu ? 28 : 0))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Configurações de aparência")
+                    .popover(isPresented: $showThemeMenu, arrowEdge: .top) {
+                        ThemeSelectionPopover(
+                            selectedTheme: $externalTheme,
+                            onClose: { showThemeMenu = false }
+                        )
+                    }
                 }
                 ToolbarItem(placement: .navigationBarLeading) { Text("EXTERNAL iOS").font(.headline.weight(.bold)) }
             }
@@ -227,6 +241,7 @@ struct PatchProjectsView: View {
             .background(selectedCollection == title ? AppTheme.accent.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
         }
         .buttonStyle(.plain)
+        .animation(.spring(response: 0.34, dampingFraction: 0.8), value: selectedCollection)
     }
 
     private var compatibilityCard: some View {
@@ -261,6 +276,9 @@ struct PatchProjectsView: View {
         }
         .padding(16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 21, style: .continuous).stroke(Color.white.opacity(0.22), lineWidth: 0.8) }
+        .shadow(color: AppTheme.glassShadow, radius: 16, y: 8)
+        .animation(.spring(response: 0.42, dampingFraction: 0.84), value: selectedCollection)
     }
 
     private var emptyInstalledCard: some View {
@@ -444,6 +462,115 @@ struct PatchProjectsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 64)
+    }
+}
+
+private struct ThemeSelectionPopover: View {
+    @Binding var selectedTheme: String
+    let onClose: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Aparência")
+                        .font(.headline.weight(.bold))
+                    Text("Escolha o acabamento do Liquid Glass")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "wand.and.stars")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(AppTheme.accent)
+            }
+
+            themeOption(
+                title: "Roxo",
+                subtitle: "Glass vibrante",
+                value: "purple",
+                tint: AppTheme.accent,
+                icon: "sparkles"
+            )
+            themeOption(
+                title: "Branco",
+                subtitle: "Glass claro",
+                value: "white",
+                tint: .white,
+                icon: "sun.max.fill"
+            )
+        }
+        .padding(18)
+        .frame(width: 286)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [Color.white.opacity(0.72), AppTheme.accent.opacity(0.24), Color.white.opacity(0.16)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.9
+                )
+        }
+        .shadow(color: AppTheme.accent.opacity(0.2), radius: 22, y: 10)
+    }
+
+    private func themeOption(
+        title: String,
+        subtitle: String,
+        value: String,
+        tint: Color,
+        icon: String
+    ) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.36, dampingFraction: 0.78)) {
+                selectedTheme = value
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(tint.opacity(value == "white" ? 0.2 : 0.28))
+                    Image(systemName: icon)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(tint)
+                }
+                .frame(width: 34, height: 34)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: selectedTheme == value ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(selectedTheme == value ? AppTheme.accent : .secondary)
+                    .scaleEffect(selectedTheme == value ? 1 : 0.88)
+            }
+            .padding(.horizontal, 12)
+            .frame(minHeight: 54)
+            .background(
+                selectedTheme == value ? AppTheme.accent.opacity(0.14) : Color.clear,
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(
+                        selectedTheme == value
+                            ? AppTheme.accent.opacity(0.36)
+                            : Color.white.opacity(0.16),
+                        lineWidth: 0.8
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(response: 0.36, dampingFraction: 0.78), value: selectedTheme)
     }
 }
 

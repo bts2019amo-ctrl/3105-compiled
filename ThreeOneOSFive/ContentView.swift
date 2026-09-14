@@ -54,11 +54,10 @@ struct ContentView: View {
             .ignoresSafeArea()
 
             Group {
-                if horizontalSizeClass == .regular {
-                    regularLayout
-                } else {
-                    compactLayout
-                }
+                PatchProjectsView(
+                    onOpenSettings: openSettings,
+                    onOpenLogs: {}
+                )
             }
         }
         .background(Color.clear)
