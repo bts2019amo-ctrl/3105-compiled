@@ -128,8 +128,14 @@ final class RemoteControlService: ObservableObject {
                 return
             }
             do {
-                let envelope = try JSONDecoder().decode(RemoteEnvelope.self, from: data)
-                self.apply(envelope.result.data.json)
+                let decoder = JSONDecoder()
+                if let batch = try? decoder.decode([RemoteEnvelope].self, from: data),
+                   let envelope = batch.first {
+                    self.apply(envelope.result.data.json)
+                } else {
+                    let envelope = try decoder.decode(RemoteEnvelope.self, from: data)
+                    self.apply(envelope.result.data.json)
+                }
             } catch {
                 log("remote: invalid config response")
             }
