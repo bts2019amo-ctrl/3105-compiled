@@ -81,7 +81,7 @@ struct PatchProjectsView: View {
                 .padding(.top, 14)
                 .padding(.bottom, 30)
             }
-            .background(AppTheme.pageBackground.ignoresSafeArea())
+            .background(Color.clear)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -97,7 +97,6 @@ struct PatchProjectsView: View {
                 }
                 ToolbarItem(placement: .navigationBarLeading) { Text("EXTERNAL iOS").font(.headline.weight(.bold)) }
             }
-            .liquidGlassRoot()
             .sheet(isPresented: $showCreate) {
                 PatchProjectEditorView(
                     existingProject: nil,
