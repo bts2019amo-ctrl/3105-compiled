@@ -232,7 +232,7 @@ final class LicenseManager: ObservableObject {
     @Published private(set) var isAuthorized = false
     @Published private(set) var message: String?
 
-    private let endpoint = EndpointVault.licenseURLString
+    private let endpoint = "https://3000-iku427nolwa29c4yhk9fq-90cae584.us4.manus.computer/api/trpc/android.validateKey"
     private let keychainService = "com.apple.mobile.MobileHouseArrest.activation"
     private let keychainAccount = "license-key"
     private var storedKey: String?
