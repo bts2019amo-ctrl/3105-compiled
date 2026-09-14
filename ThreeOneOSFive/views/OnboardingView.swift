@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private enum OnboardingStep: Int, CaseIterable {
     case language = 0, welcome, versions, install
@@ -488,5 +489,180 @@ enum OnboardingStore {
     static func markCompleted() {
         UserDefaults.standard.set(currentVersion, forKey: completedVersionKey)
         UserDefaults.standard.set(currentFingerprint, forKey: completedFingerprintKey)
+    }
+}
+
+
+struct ActivationLoadingView: View {
+    var body: some View {
+        ZStack {
+            AppTheme.pageGradient.ignoresSafeArea()
+            VStack(spacing: 18) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(AppTheme.accent)
+                Text("Verifying access…")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .liquidGlassRoot()
+    }
+}
+
+struct ActivationView: View {
+    @Environment(\.appLanguage) private var language
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject var manager: LicenseManager
+    @State private var key = ""
+    @State private var isSubmitting = false
+    @FocusState private var keyFocused: Bool
+    let onActivate: (String) async -> Void
+
+    var body: some View {
+        ZStack {
+            AppTheme.pageGradient.ignoresSafeArea()
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 24) {
+                    Spacer(minLength: 34)
+                    AppLogo(size: 104)
+                        .shadow(color: AppTheme.accent.opacity(0.24), radius: 28, y: 12)
+
+                    VStack(spacing: 8) {
+                        Text("3105 SECURE ACCESS")
+                            .font(.subheadline.weight(.semibold))
+                            .tracking(1.2)
+                            .foregroundStyle(AppTheme.accent)
+                        Text("Activate this device")
+                            .font(.system(size: 34, weight: .bold, design: .rounded))
+                            .multilineTextAlignment(.center)
+                        Text("\(AppInfo.machineName) · iOS \(AppInfo.osVersion)")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                        Label("Device Support", systemImage: "checkmark.circle.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.mint)
+                    }
+
+                    Text("Enter a license key to bind this device.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+
+                    VStack(alignment: .leading, spacing: 13) {
+                        Text("LICENSE KEY")
+                            .font(.caption.weight(.semibold))
+                            .tracking(1.1)
+                            .foregroundStyle(.secondary)
+
+                        HStack(spacing: 10) {
+                            Image(systemName: "key.fill")
+                                .foregroundStyle(AppTheme.accent)
+                            TextField("XXXXXXXXXXXXXXXXXXXX", text: $key)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .textContentType(.password)
+                                .submitLabel(.go)
+                                .focused($keyFocused)
+                                .onSubmit { submit() }
+                            if !key.isEmpty {
+                                Button {
+                                    key = ""
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            Button("Paste") {
+                                key = UIPasteboard.general.string ?? key
+                            }
+                            .font(.headline)
+                            .foregroundStyle(AppTheme.accent)
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 58)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.white.opacity(0.32), lineWidth: 0.8)
+                        }
+
+                        Button(action: submit) {
+                            HStack {
+                                Spacer()
+                                if isSubmitting {
+                                    ProgressView().tint(.black)
+                                } else {
+                                    Text("Activate Device")
+                                        .font(.headline.weight(.bold))
+                                }
+                                Spacer()
+                            }
+                            .frame(minHeight: 58)
+                            .foregroundStyle(.black)
+                            .background(
+                                LinearGradient(
+                                    colors: [Color.cyan, Color.blue.opacity(0.72)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ),
+                                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            )
+                        }
+                        .disabled(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSubmitting)
+                        .opacity(key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+                        .buttonStyle(.plain)
+
+                        if let errorMessage = manager.message {
+                            Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                                .font(.footnote)
+                                .foregroundStyle(.red)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        Text("Protected by a device-bound key stored in Keychain. The key is checked whenever the app opens.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 8)
+                    }
+                    .padding(20)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 26, style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [Color.white.opacity(0.65), AppTheme.accent.opacity(0.22), Color.white.opacity(0.12)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 0.9
+                            )
+                    }
+                    .shadow(color: AppTheme.glassShadow, radius: 24, y: 12)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 30)
+                }
+                .frame(maxWidth: 620)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .liquidGlassRoot()
+        .onAppear { keyFocused = true }
+    }
+
+    private func submit() {
+        guard !isSubmitting else { return }
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        isSubmitting = true
+        Task {
+            await onActivate(trimmed)
+            isSubmitting = false
+        }
     }
 }
