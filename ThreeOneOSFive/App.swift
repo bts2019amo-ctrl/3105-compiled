@@ -12,7 +12,7 @@ struct ThreeOneOSFiveApp: App {
     @StateObject private var repositoryStore = PackageRepositoryStore()
     @StateObject private var licenseManager = LicenseManager()
     @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
-    @State private var showOnboarding = OnboardingStore.shouldShow()
+    @State private var showLaunchSequence = true
     @State private var showAttribution = false
     @State private var updateOffer: AppUpdateChecker.Offer?
     @Environment(\.scenePhase) private var scenePhase
@@ -54,14 +54,13 @@ struct ThreeOneOSFiveApp: App {
                         .environmentObject(repositoryStore)
                         .environment(\.appLanguage, language)
                         .environment(\.locale, language.locale)
-                        .opacity(showOnboarding ? 0 : 1)
-                        .allowsHitTesting(!showOnboarding)
+                        .opacity(showLaunchSequence ? 0 : 1)
+                        .allowsHitTesting(!showLaunchSequence)
 
-                    if showOnboarding {
-                        OnboardingView {
-                            OnboardingStore.markCompleted()
+                    if showLaunchSequence {
+                        LaunchSequenceView {
                             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.24)) {
-                                showOnboarding = false
+                                showLaunchSequence = false
                             }
                             appState.detectSupport()
                             checkForUpdate()
@@ -77,7 +76,7 @@ struct ThreeOneOSFiveApp: App {
                     }
                 }
             }
-            .displayIdentityAttribution(isPresented: $showAttribution, enabled: !showOnboarding)
+            .displayIdentityAttribution(isPresented: $showAttribution, enabled: !showLaunchSequence)
             .sheet(isPresented: $showAttribution) {
                 DisplayAttributionSheet()
             }
@@ -95,7 +94,7 @@ struct ThreeOneOSFiveApp: App {
             }
             .onAppear {
                 licenseManager.refresh()
-                if licenseManager.isAuthorized, !showOnboarding {
+                if licenseManager.isAuthorized, !showLaunchSequence {
                     appState.detectSupport()
                     checkForUpdate()
                 }
@@ -103,7 +102,7 @@ struct ThreeOneOSFiveApp: App {
             .onChange(of: scenePhase) { phase in
                 guard phase == .active else { return }
                 licenseManager.refresh()
-                guard licenseManager.isAuthorized, !showOnboarding else { return }
+                guard licenseManager.isAuthorized, !showLaunchSequence else { return }
                 appState.detectSupport()
             }
             .onOpenURL { url in

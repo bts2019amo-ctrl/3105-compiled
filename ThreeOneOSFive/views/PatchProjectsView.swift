@@ -29,6 +29,10 @@ struct PatchProjectsView: View {
     @State private var isImportingWallpapers = false
     @State private var showSimulatedWallpaperDetail = false
     @State private var simulatedWallpaperDetailGate = OneShotPresentationGate()
+    @State private var selectedCollection = "Installed"
+    @State private var showBackups = true
+    @State private var showSystemFiles = false
+    @State private var secureMode = true
     let onOpenSettings: () -> Void
     let onOpenLogs: () -> Void
 
@@ -89,111 +93,36 @@ struct PatchProjectsView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                AppSearchField(
-                    text: $searchText,
-                    prompt: language.text("installed.search"),
-                    clearLabel: language.text("common.clear")
-                )
-                Divider()
-                List {
-                    if !hasLocalContent && (store.isBusy || isImportingWallpapers) {
-                        loadingState
-                            .listRowSeparator(.hidden)
-                    } else if !hasLocalContent {
-                        emptyState
-                            .listRowSeparator(.hidden)
-                    } else if !hasSearchResults && !store.isBusy {
-                        searchEmptyState
-                            .listRowSeparator(.hidden)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    installedHeader
+                    accessBanner
+                    installedSearch
+                    selectionCard
+                    compatibilityCard
+                    if !filteredItems.isEmpty || !filteredWallpaperPackages.isEmpty {
+                        installedContentCard
                     } else {
-                        if !filteredItems.isEmpty {
-                            Section(language.text("patch.title")) {
-                                ForEach(filteredItems) { item in
-                                    itemRow(item)
-                                }
-                                .onDelete { offsets in
-                                    offsets.map { filteredItems[$0] }.forEach(store.delete)
-                                }
-                            }
-                        }
-                        if !filteredWallpaperPackages.isEmpty {
-                            Section(language.text("tab.wallpapers")) {
-                                ForEach(filteredWallpaperPackages) { package in
-                                    NavigationLink {
-                                        InstalledWallpaperPackageDetailView(
-                                            package: package,
-                                            onApplied: reloadWallpaperPackages
-                                        )
-                                    } label: {
-                                        wallpaperRow(package)
-                                    }
-                                    .swipeActions(
-                                        edge: .trailing,
-                                        allowsFullSwipe: false
-                                    ) {
-                                        Button(role: .destructive) {
-                                            wallpaperPendingDeletion = package
-                                        } label: {
-                                            Label(
-                                                language.text("common.delete"),
-                                                systemImage: "trash"
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        emptyInstalledCard
                     }
-                    if cleanerEnabled {
-                        Section(language.text("repository.utilities")) {
-                            cleanerRow
-                        }
-                    }
+                    legitimateControls
+                    if cleanerEnabled { cleanerCard }
+                    footerSignature
                 }
-                .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
-                .background(AppTheme.pageBackground)
-                .listRowBackground(AppGlassRowBackground())
+                .padding(.horizontal, AppTheme.pageInset)
+                .padding(.top, 14)
+                .padding(.bottom, 30)
             }
-            .navigationTitle(language.text("tab.installed"))
+            .background(AppTheme.pageBackground.ignoresSafeArea())
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Menu {
-                        Button {
-                            showCreate = true
-                        } label: {
-                            Label(language.text("patch.new"), systemImage: "doc.badge.plus")
-                        }
-                        Button {
-                            showImporter = true
-                        } label: {
-                            Label(language.text("patch.import"), systemImage: "square.and.arrow.down")
-                        }
-                        Button {
-                            showWallpaperImporter = true
-                        } label: {
-                            Label(
-                                language.text("wallpaper.import"),
-                                systemImage: "photo.badge.plus"
-                            )
-                        }
-                    } label: {
-                        if store.isBusy || isImportingWallpapers {
-                            ProgressView()
-                        } else {
-                            Image(systemName: "plus")
-                        }
+                    Button(action: onOpenSettings) {
+                        Image(systemName: "gearshape.fill")
                     }
-                    .disabled(store.isBusy || isImportingWallpapers)
-                    .accessibilityLabel(language.text("patch.add"))
                 }
-                AppUtilityToolbar(
-                    language: language,
-                    onOpenSettings: onOpenSettings,
-                    onOpenLogs: onOpenLogs
-                )
+                ToolbarItem(placement: .navigationBarLeading) { Text("EXTERNAL iOS").font(.headline.weight(.bold)) }
             }
             .liquidGlassRoot()
             .sheet(isPresented: $showImporter) {
@@ -300,6 +229,151 @@ struct PatchProjectsView: View {
             }
         }
     }
+
+    private var installedHeader: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Circle().fill(AppTheme.accent.opacity(0.18))
+                Image(systemName: "crown.fill").foregroundStyle(AppTheme.accent)
+            }
+            .frame(width: 38, height: 38)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("EXTERNAL iOS").font(.title3.weight(.bold))
+                Text("INSTALLED").font(.caption2.weight(.semibold)).tracking(1.4).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Image(systemName: "checkmark.shield.fill").foregroundStyle(.green)
+        }
+    }
+
+    private var accessBanner: some View {
+        ZStack(alignment: .bottomLeading) {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(LinearGradient(colors: [AppTheme.accent.opacity(0.84), Color.black.opacity(0.72)], startPoint: .topTrailing, endPoint: .bottomLeading))
+                .overlay { RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.22), lineWidth: 0.8) }
+            Circle().fill(Color.white.opacity(0.12)).frame(width: 210, height: 210).blur(radius: 2).offset(x: 180, y: -90)
+            VStack(alignment: .leading, spacing: 7) {
+                Label("SECURE WORKSPACE", systemImage: "sparkles")
+                    .font(.caption.weight(.bold)).tracking(1.3).foregroundStyle(.white.opacity(0.82))
+                Text("MORE THAN INSTALLED.\nYOUR CONTROL CENTER.")
+                    .font(.system(size: 21, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+            .padding(20)
+        }
+        .frame(height: 138)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: AppTheme.accent.opacity(0.18), radius: 20, y: 9)
+    }
+
+    private var installedSearch: some View {
+        HStack(spacing: 9) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("Search installed content", text: $searchText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+            if !searchText.isEmpty { Button { searchText = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.tertiary) }.buttonStyle(.plain) }
+        }
+        .padding(.horizontal, 13)
+        .frame(minHeight: 43)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 15, style: .continuous).stroke(Color.white.opacity(0.2), lineWidth: 0.7) }
+    }
+
+    private var selectionCard: some View {
+        VStack(alignment: .leading, spacing: 13) {
+            Label("SELECT COLLECTION", systemImage: "square.grid.2x2.fill").font(.caption.weight(.bold)).tracking(1.1).foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                collectionButton(title: "Projects", icon: "shippingbox.fill")
+                collectionButton(title: "Wallpapers", icon: "photo.fill")
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
+    }
+
+    private func collectionButton(title: String, icon: String) -> some View {
+        Button { withAnimation(.easeInOut(duration: 0.18)) { selectedCollection = title == "Projects" ? "Installed" : "Wallpapers" } } label: {
+            HStack(spacing: 8) {
+                Image(systemName: icon).font(.subheadline)
+                Text(title).font(.subheadline.weight(.semibold))
+                Spacer()
+                if (title == "Projects" && selectedCollection == "Installed") || (title == "Wallpapers" && selectedCollection == "Wallpapers") { Image(systemName: "checkmark.circle.fill").foregroundStyle(AppTheme.accent) }
+            }
+            .padding(.horizontal, 12).frame(minHeight: 48)
+            .background((title == "Projects" && selectedCollection == "Installed") || (title == "Wallpapers" && selectedCollection == "Wallpapers") ? AppTheme.accent.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var compatibilityCard: some View {
+        HStack(spacing: 11) {
+            Image(systemName: "checkmark.circle.fill").font(.title3).foregroundStyle(.green)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("iOS \(AppInfo.osVersion)").font(.subheadline.weight(.bold))
+                Text(appStateText).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text("SUPPORTED").font(.caption2.weight(.bold)).tracking(1).foregroundStyle(.green)
+        }
+        .padding(15)
+        .background(Color.green.opacity(0.08), in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 17, style: .continuous).stroke(Color.green.opacity(0.32), lineWidth: 0.8) }
+    }
+
+    private var appStateText: String { hasLocalContent ? "Installed content ready" : "Ready for your first install" }
+
+    private var installedContentCard: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(selectedCollection == "Wallpapers" ? "WALLPAPERS" : "INSTALLED CONTENT").font(.caption2.weight(.bold)).tracking(1.2).foregroundStyle(.secondary).padding(.horizontal, 4).padding(.bottom, 5)
+            if selectedCollection == "Wallpapers" {
+                ForEach(filteredWallpaperPackages) { package in wallpaperRow(package).padding(.vertical, 5) }
+            } else {
+                ForEach(filteredItems) { item in itemRow(item).padding(.vertical, 5) }
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
+    }
+
+    private var emptyInstalledCard: some View {
+        VStack(spacing: 11) {
+            Image(systemName: "tray.full.fill").font(.system(size: 28)).foregroundStyle(AppTheme.accent)
+            Text("Nothing installed yet").font(.headline)
+            Text("Import a legitimate project or wallpaper package to see it here.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            HStack(spacing: 9) {
+                Button { showCreate = true } label: { Label("New project", systemImage: "plus") }.buttonStyle(.borderedProminent).tint(AppTheme.accent)
+                Button { showImporter = true } label: { Label("Import", systemImage: "square.and.arrow.down") }.buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 26).padding(.horizontal, 16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
+    }
+
+    private var legitimateControls: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("CONFIGURATION").font(.caption2.weight(.bold)).tracking(1.2).foregroundStyle(.secondary).padding(.horizontal, 4).padding(.bottom, 7)
+            settingToggle(title: "Keep backups", subtitle: "Save originals before changes", icon: "archivebox.fill", value: $showBackups)
+            settingToggle(title: "Show system files", subtitle: "Include protected containers", icon: "folder.fill", value: $showSystemFiles)
+            settingToggle(title: "Secure mode", subtitle: "Require confirmation for changes", icon: "lock.shield.fill", value: $secureMode)
+        }
+    }
+
+    private func settingToggle(title: String, subtitle: String, icon: String, value: Binding<Bool>) -> some View {
+        HStack(spacing: 11) {
+            AppRowIcon(systemName: icon)
+            VStack(alignment: .leading, spacing: 3) { Text(title).font(.subheadline.weight(.semibold)); Text(subtitle).font(.caption).foregroundStyle(.secondary) }
+            Spacer()
+            Toggle("", isOn: value).labelsHidden().tint(AppTheme.accent)
+        }
+        .padding(.horizontal, 13).padding(.vertical, 11)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.white.opacity(0.13), lineWidth: 0.6) }
+    }
+
+    private var cleanerCard: some View { Button { showCleaner = true } label: { HStack { AppRowIcon(systemName: "broom.fill"); VStack(alignment: .leading, spacing: 3) { Text("Clear temporary files").font(.subheadline.weight(.semibold)); Text("Free space used by app cache").font(.caption).foregroundStyle(.secondary) }; Spacer(); Image(systemName: "chevron.right").foregroundStyle(.tertiary) }.padding(13) }.buttonStyle(.plain).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous)) }
+
+    private var footerSignature: some View { HStack { Text("EXTERNAL iOS").font(.caption2.weight(.bold)).tracking(1.1); Spacer(); Text("SECURE · SIMPLE · READY").font(.caption2.weight(.semibold)).tracking(0.7).foregroundStyle(.secondary) }.foregroundStyle(AppTheme.accent).padding(.top, 5) }
 
     private func consumeExternalImport() {
         guard let request = draftCoordinator.importRequest else { return }

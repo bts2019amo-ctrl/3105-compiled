@@ -2,169 +2,101 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.appLanguage) private var language
     @EnvironmentObject private var appState: AppState
-    @AppStorage(AppLanguage.storageKey) private var languageCode = AppLanguage.english.rawValue
+    @AppStorage("externalTheme") private var theme = "purple"
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
-    @AppStorage(FeatureVisibility.developerModeStorageKey)
-    private var developerModeEnabled = false
+    @AppStorage(FeatureVisibility.developerModeStorageKey) private var developerModeEnabled = false
+
+    private var themeAccent: Color { theme == "white" ? .white : AppTheme.accent }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
-                    HStack(spacing: 14) {
-                        AppLogo()
-
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("3105").font(.headline)
-                            Text(language.text("common.version", appVersion))
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
+                    settingsHero
+                    settingsSection(title: "APPEARANCE") {
+                        themeRow
+                        preferenceRow(icon: "circle.lefthalf.filled", title: "Interface style", subtitle: theme == "white" ? "White" : "Purple") {
+                            Menu {
+                                Button { theme = "purple" } label: { Label("Purple", systemImage: theme == "purple" ? "checkmark" : "paintpalette") }
+                                Button { theme = "white" } label: { Label("White", systemImage: theme == "white" ? "checkmark" : "circle.fill") }
+                            } label: {
+                                HStack(spacing: 4) { Text(theme == "white" ? "White" : "Purple"); Image(systemName: "chevron.up.chevron.down") }
+                                    .font(.subheadline.weight(.semibold)).foregroundStyle(themeAccent)
+                            }
                         }
                     }
-                    .padding(.vertical, 4)
-                }
-
-                Section(language.text("settings.language")) {
-                    Picker(language.text("settings.language"), selection: $languageCode) {
-                        ForEach(AppLanguage.allCases) { option in
-                            Text(option.displayName).tag(option.rawValue)
-                        }
+                    settingsSection(title: "APP BEHAVIOR") {
+                        ToggleRow(icon: "sparkles", title: "Cleaner", subtitle: "Show temporary file cleanup", isOn: $cleanerEnabled, tint: themeAccent)
+                        ToggleRow(icon: "hammer.fill", title: "Developer mode", subtitle: "Reveal advanced local tools", isOn: $developerModeEnabled, tint: themeAccent)
                     }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                }
-
-                Section {
-                    Toggle(isOn: $cleanerEnabled) {
-                        Label(language.text("tab.cleaner"), systemImage: "sparkles")
+                    settingsSection(title: "DEVICE") {
+                        infoRow(icon: "iphone", title: "Device", value: AppInfo.displayMachineName)
+                        infoRow(icon: "apple.logo", title: "System", value: "iOS \(AppInfo.osVersion)")
+                        infoRow(icon: "checkmark.shield.fill", title: "Compatibility", value: appState.isSupported ? "Supported" : "Unsupported", valueColor: appState.isSupported ? .green : .red)
                     }
-                    Toggle(isOn: $developerModeEnabled) {
-                        Label(
-                            language.text("settings.developer_mode"),
-                            systemImage: "hammer.fill"
-                        )
+                    settingsSection(title: "ABOUT") {
+                        infoRow(icon: "number", title: "Version", value: appVersion)
+                        HStack(spacing: 10) { Image(systemName: "lock.shield.fill").foregroundStyle(themeAccent); Text("Secure local workspace").font(.subheadline.weight(.semibold)); Spacer(); Image(systemName: "checkmark").foregroundStyle(.green) }
+                            .padding(.vertical, 4)
                     }
-                } header: {
-                    Text(language.text("dashboard.features"))
-                } footer: {
-                    Text(language.text("settings.developer_mode_footer"))
+                    HStack { Spacer(); Text("EXTERNAL iOS · SECURE · SIMPLE · READY").font(.caption2.weight(.bold)).tracking(1).foregroundStyle(.secondary); Spacer() }.padding(.top, 5)
                 }
-
-                if WallpaperFeatureSupportPolicy.isSupported(
-                    major: AppInfo.versionTuple.major
-                ) {
-                    Section {
-                        NavigationLink {
-                            WallpaperResetSettingsView()
-                        } label: {
-                            Label(
-                                language.text("wallpaper.reset"),
-                                systemImage: "arrow.counterclockwise"
-                            )
-                        }
-                    } header: {
-                        Text(language.text("tab.wallpapers"))
-                    } footer: {
-                        Text(language.text("wallpaper.reset_settings_footer"))
-                    }
-                }
-
-                Section(language.text("common.device")) {
-                    LabeledContent(language.text("dashboard.hardware_model"), value: AppInfo.displayMachineName)
-                    LabeledContent(language.text("settings.ios_version"), value: "\(AppInfo.osVersion) (\(AppInfo.osBuild))")
-                }
-
-                Section {
-                    HStack {
-                        Text(language.text("settings.current_version"))
-                        Spacer()
-                        Text(language.text(appState.isSupported ? "settings.supported" : "settings.unsupported"))
-                        .foregroundStyle(appState.isSupported ? Color.green : Color.red)
-                    }
-                    LabeledContent("iOS 17", value: ExploitSupportPolicy.verifiedIOS17Range)
-                    LabeledContent("iOS 18", value: ExploitSupportPolicy.verifiedIOS18Range)
-                    LabeledContent("iOS 26", value: ExploitSupportPolicy.verifiedIOS26Range)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("iOS 27.0")
-                            .font(.body)
-                        ForEach(ExploitSupportPolicy.verifiedIOS27Builds, id: \.build) { version in
-                            Text(versionLabel(version))
-                            .font(.caption.monospaced())
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(.vertical, 2)
-                } header: {
-                    Text(language.text("settings.verified_versions"))
-                } footer: {
-                    Text(language.text("settings.supported_versions_footer"))
-                }
-
+                .padding(.horizontal, 20).padding(.top, 15).padding(.bottom, 30)
             }
-            .scrollContentBackground(.hidden)
-            .background(AppTheme.pageBackground)
-            .listRowBackground(AppGlassRowBackground())
-            .tint(AppTheme.accent)
-            .navigationTitle(language.text("settings.title"))
+            .background(AppTheme.pageBackground.ignoresSafeArea())
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(language.text("common.done")) { dismiss() }
-                        .fontWeight(.semibold)
-                }
-            }
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Done") { dismiss() }.fontWeight(.semibold).foregroundStyle(themeAccent) } }
+            .tint(themeAccent)
             .liquidGlassRoot()
         }
     }
 
-    private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String
-            ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
-            ?? "1.0"
+    private var settingsHero: some View {
+        HStack(spacing: 14) {
+            AppLogo(size: 62)
+            VStack(alignment: .leading, spacing: 5) { Text("EXTERNAL iOS").font(.title3.weight(.bold)); Text("Personalize your secure workspace").font(.subheadline).foregroundStyle(.secondary) }
+            Spacer()
+        }
+        .padding(18)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 23, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 23, style: .continuous).stroke(themeAccent.opacity(0.3), lineWidth: 0.8) }
     }
 
-    private func versionLabel(
-        _ version: (beta: Int, publicBeta: Int?, build: String)
-    ) -> String {
-        if let publicBeta = version.publicBeta {
-            return language.text(
-                "settings.developer_public_beta_build",
-                Int64(version.beta),
-                Int64(publicBeta),
-                version.build
-            )
-        }
-        return language.text(
-            "settings.developer_beta_build",
-            Int64(version.beta),
-            version.build
-        )
+    private func settingsSection<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) { Text(title).font(.caption2.weight(.bold)).tracking(1.2).foregroundStyle(.secondary).padding(.horizontal, 5); VStack(spacing: 0, content: content).padding(.horizontal, 14).padding(.vertical, 8).background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous)).overlay { RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.white.opacity(0.16), lineWidth: 0.7) } }
     }
 
-    @ViewBuilder
-    private func creditsRow(name: String, role: String, url: String) -> some View {
-        if let destination = URL(string: url) {
-            Link(destination: destination) {
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(name)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                        Text(role)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppTheme.accent)
-                        .frame(width: 28, height: 28)
-                }
-                .contentShape(Rectangle())
-            }
-            .accessibilityLabel(language.text("accessibility.open_profile", name))
+    private var themeRow: some View {
+        HStack(spacing: 11) {
+            ZStack { RoundedRectangle(cornerRadius: 9, style: .continuous).fill(themeAccent.opacity(0.15)); Image(systemName: "paintbrush.fill").foregroundStyle(themeAccent) }.frame(width: 31, height: 31)
+            VStack(alignment: .leading, spacing: 3) { Text("Accent theme").font(.subheadline.weight(.semibold)); Text("Change the visual accent color").font(.caption).foregroundStyle(.secondary) }
+            Spacer()
+            Menu {
+                Button { theme = "purple" } label: { Label("Purple", systemImage: theme == "purple" ? "checkmark" : "paintpalette") }
+                Button { theme = "white" } label: { Label("White", systemImage: theme == "white" ? "checkmark" : "circle.fill") }
+            } label: { Circle().fill(themeAccent).frame(width: 22, height: 22).overlay { Circle().stroke(Color.white.opacity(0.45), lineWidth: 1) } }
         }
+        .padding(.vertical, 8)
     }
+
+    private func preferenceRow(icon: String, title: String, subtitle: String, @ViewBuilder action: () -> some View) -> some View {
+        HStack(spacing: 11) { AppRowIcon(systemName: icon, tint: themeAccent); VStack(alignment: .leading, spacing: 3) { Text(title).font(.subheadline.weight(.semibold)); Text(subtitle).font(.caption).foregroundStyle(.secondary) }; Spacer(); action() }.padding(.vertical, 8)
+    }
+
+    private func infoRow(icon: String, title: String, value: String, valueColor: Color = .secondary) -> some View {
+        HStack(spacing: 11) { AppRowIcon(systemName: icon, tint: themeAccent); Text(title).font(.subheadline.weight(.semibold)); Spacer(); Text(value).font(.caption).foregroundStyle(valueColor).lineLimit(1) }.padding(.vertical, 8)
+    }
+
+    private var appVersion: String { Bundle.main.object(forInfoDictionaryKey: "AppReleaseDisplayVersion") as? String ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0" }
+}
+
+private struct ToggleRow: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+    let tint: Color
+    var body: some View { HStack(spacing: 11) { AppRowIcon(systemName: icon, tint: tint); VStack(alignment: .leading, spacing: 3) { Text(title).font(.subheadline.weight(.semibold)); Text(subtitle).font(.caption).foregroundStyle(.secondary) }; Spacer(); Toggle("", isOn: $isOn).labelsHidden().tint(tint) }.padding(.vertical, 8) }
 }

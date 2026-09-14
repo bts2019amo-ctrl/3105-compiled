@@ -666,3 +666,153 @@ struct ActivationView: View {
         }
     }
 }
+
+
+private enum LaunchSequencePhase {
+    case loading
+    case approved
+}
+
+struct LaunchSequenceView: View {
+    @State private var phase: LaunchSequencePhase = .loading
+    @State private var progress = 72
+    let onContinue: () -> Void
+
+    var body: some View {
+        ZStack {
+            AppTheme.pageGradient.ignoresSafeArea()
+            Circle()
+                .fill(AppTheme.accent.opacity(0.14))
+                .frame(width: 360, height: 360)
+                .blur(radius: 12)
+                .offset(x: 150, y: -310)
+
+            if phase == .loading {
+                loadingView
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            } else {
+                approvedView
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            }
+        }
+        .liquidGlassRoot()
+        .task { await runLoadingSequence() }
+    }
+
+    private var brand: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 5) {
+                Text("EXTERNAL")
+                    .foregroundStyle(.primary)
+                Text("iOS")
+                    .foregroundStyle(AppTheme.accent)
+            }
+            .font(.system(size: 30, weight: .bold, design: .rounded))
+            .tracking(-0.8)
+            Text("SECURE DEVICE ACCESS")
+                .font(.caption.weight(.semibold))
+                .tracking(2.4)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var loadingView: some View {
+        VStack(spacing: 28) {
+            brand
+            ZStack {
+                Circle()
+                    .stroke(AppTheme.accent.opacity(0.13), lineWidth: 10)
+                Circle()
+                    .trim(from: 0, to: CGFloat(progress) / 100)
+                    .stroke(AppTheme.accent, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .shadow(color: AppTheme.accent.opacity(0.55), radius: 12)
+                VStack(spacing: 2) {
+                    Text("\(progress)%")
+                        .font(.system(size: 30, weight: .bold, design: .rounded))
+                    Text("CARREGANDO...")
+                        .font(.caption2.weight(.bold))
+                        .tracking(1.1)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 142, height: 142)
+            Text("AGUARDE UM INSTANTE")
+                .font(.caption.weight(.semibold))
+                .tracking(1.5)
+                .foregroundStyle(.secondary)
+        }
+        .padding(28)
+    }
+
+    private var approvedView: some View {
+        VStack(spacing: 20) {
+            brand
+                .padding(.bottom, 10)
+            VStack(spacing: 14) {
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.accent.opacity(0.18))
+                        .frame(width: 72, height: 72)
+                    Circle()
+                        .stroke(AppTheme.accent.opacity(0.6), lineWidth: 1)
+                        .frame(width: 72, height: 72)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(AppTheme.accent)
+                }
+                Text("APROVADO")
+                    .font(.title2.weight(.bold))
+                Text("ACESSO LIBERADO COM SUCESSO")
+                    .font(.caption.weight(.semibold))
+                    .tracking(1.2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: 420)
+            .padding(.vertical, 28)
+            .padding(.horizontal, 34)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay { RoundedRectangle(cornerRadius: 28, style: .continuous).stroke(AppTheme.accent.opacity(0.38), lineWidth: 1) }
+            HStack(spacing: 11) {
+                Image(systemName: "calendar.badge.checkmark")
+                    .foregroundStyle(AppTheme.accent)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("ACESSO ATIVO")
+                        .font(.caption2.weight(.bold))
+                        .tracking(1)
+                        .foregroundStyle(.secondary)
+                    Text("Licença verificada neste dispositivo")
+                        .font(.subheadline.weight(.semibold))
+                }
+                Spacer()
+            }
+            .padding(15)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .frame(maxWidth: 420)
+            Button(action: onContinue) {
+                Text("CONTINUAR")
+                    .font(.headline.weight(.bold))
+                    .tracking(1)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .foregroundStyle(.white)
+                    .background(AppTheme.accent, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+                    .shadow(color: AppTheme.accent.opacity(0.32), radius: 17, y: 8)
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: 420)
+        }
+        .padding(24)
+    }
+
+    private func runLoadingSequence() async {
+        for value in 73...100 {
+            try? await Task.sleep(nanoseconds: 32_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run { withAnimation(.linear(duration: 0.03)) { progress = value } }
+        }
+        try? await Task.sleep(nanoseconds: 280_000_000)
+        guard !Task.isCancelled else { return }
+        await MainActor.run { withAnimation(.easeOut(duration: 0.24)) { phase = .approved } }
+    }
+}
