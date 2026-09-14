@@ -18,8 +18,6 @@ struct PatchProjectsView: View {
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
     @State private var showCreate = false
-    @State private var showImporter = false
-    @State private var showWallpaperImporter = false
     @State private var wallpaperPackages: [WallpaperStagedPackage] = []
     @State private var wallpaperImportFeedback: WallpaperImportFeedback?
     @State private var wallpaperPendingDeletion: WallpaperStagedPackage?
@@ -92,23 +90,6 @@ struct PatchProjectsView: View {
                 ToolbarItem(placement: .navigationBarLeading) { Text("EXTERNAL iOS").font(.headline.weight(.bold)) }
             }
             .liquidGlassRoot()
-            .sheet(isPresented: $showImporter) {
-                FileDocumentPicker(
-                    allowedContentTypes: PatchPackagePickerPolicy.allowedContentTypes,
-                    copiesSelectedDocument: PatchPackagePickerPolicy.copiesSelectedDocument,
-                    allowsMultipleSelection: false,
-                    onSelection: { result in
-                        showImporter = false
-                        if case .success(let urls) = result, let url = urls.first {
-                            store.importPackage(at: url)
-                        }
-                    },
-                    onCancel: {
-                        showImporter = false
-                    }
-                )
-                .ignoresSafeArea()
-            }
             .sheet(isPresented: $showCreate) {
                 PatchProjectEditorView(
                     existingProject: nil,
@@ -126,23 +107,6 @@ struct PatchProjectsView: View {
                     store.create(project: project, password: password)
                     draftCoordinator.clear()
                 }
-            }
-            .sheet(isPresented: $showWallpaperImporter) {
-                FileDocumentPicker(
-                    allowedContentTypes: WallpaperPackagePickerPolicy.allowedContentTypes,
-                    copiesSelectedDocument: true,
-                    allowsMultipleSelection: true,
-                    onSelection: { result in
-                        showWallpaperImporter = false
-                        if case .success(let urls) = result, !urls.isEmpty {
-                            importWallpaperPackages(urls)
-                        }
-                    },
-                    onCancel: {
-                        showWallpaperImporter = false
-                    }
-                )
-                .ignoresSafeArea()
             }
             .alert(item: $wallpaperImportFeedback) { feedback in
                 Alert(
@@ -290,8 +254,7 @@ struct PatchProjectsView: View {
         VStack(spacing: 11) {
             Image(systemName: "tray.full.fill").font(.system(size: 28)).foregroundStyle(AppTheme.accent)
             Text("Nothing installed yet").font(.headline)
-            Text("Import a legitimate project or wallpaper package to see it here.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Button { showImporter = true } label: { Label("Import", systemImage: "square.and.arrow.down") }.buttonStyle(.borderedProminent).tint(AppTheme.accent)
+            Text("No installed content is available yet.").font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 26).padding(.horizontal, 16)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 21, style: .continuous))
