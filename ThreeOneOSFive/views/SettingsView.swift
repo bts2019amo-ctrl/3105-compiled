@@ -8,6 +8,9 @@ struct SettingsView: View {
     @AppStorage(FeatureVisibility.developerModeStorageKey) private var developerModeEnabled = false
 
     private var themeAccent: Color { theme == "white" ? .white : AppTheme.accent }
+    private var themeDisplayName: String {
+        ["purple": "Purple", "white": "White", "blue": "Blue", "cyan": "Cyan", "green": "Green", "orange": "Orange", "red": "Red", "pink": "Pink"][theme] ?? "Purple"
+    }
 
     var body: some View {
         NavigationStack {
@@ -16,7 +19,7 @@ struct SettingsView: View {
                     settingsHero
                     settingsSection(title: "APPEARANCE") {
                         themeRow
-                        preferenceRow(icon: "circle.lefthalf.filled", title: "Interface style", subtitle: theme == "white" ? "White" : "Purple") {
+                        preferenceRow(icon: "circle.lefthalf.filled", title: "Interface style", subtitle: themeDisplayName) {
                             Menu {
                                 Button { theme = "purple" } label: { Label("Purple", systemImage: theme == "purple" ? "checkmark" : "paintpalette") }
                                 Button { theme = "white" } label: { Label("White", systemImage: theme == "white" ? "checkmark" : "circle.fill") }
@@ -27,7 +30,7 @@ struct SettingsView: View {
                                 Button { theme = "red" } label: { Label("Red", systemImage: theme == "red" ? "checkmark" : "circle.fill") }
                                 Button { theme = "pink" } label: { Label("Pink", systemImage: theme == "pink" ? "checkmark" : "circle.fill") }
                             } label: {
-                                HStack(spacing: 4) { Text(theme == "white" ? "White" : "Purple"); Image(systemName: "chevron.up.chevron.down") }
+                                HStack(spacing: 4) { Text(themeDisplayName); Image(systemName: "chevron.up.chevron.down") }
                                     .font(.subheadline.weight(.semibold)).foregroundStyle(themeAccent)
                             }
                         }

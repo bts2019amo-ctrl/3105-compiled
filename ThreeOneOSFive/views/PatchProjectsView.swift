@@ -26,7 +26,6 @@ struct PatchProjectsView: View {
     @State private var showSimulatedWallpaperDetail = false
     @State private var simulatedWallpaperDetailGate = OneShotPresentationGate()
     @State private var showThemeMenu = false
-    @State private var showExternalPanel = false
     @State private var selectedCollection = "FF NORMAL"
     @AppStorage("externalTheme") private var externalTheme = "purple"
     let onOpenSettings: () -> Void
@@ -42,6 +41,7 @@ struct PatchProjectsView: View {
 
     private var remotePatchesForSelection: [RemotePatchInfo] {
         remoteControl.patchCatalog.filter { patch in
+            guard !patch.name.localizedCaseInsensitiveContains("painel system") else { return false }
             let value = "\(patch.game) \(patch.target) \(patch.category)".uppercased()
             return selectedCollection == "FF MAX"
                 ? value.contains("MAX")
@@ -112,20 +112,6 @@ struct PatchProjectsView: View {
                         )
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
-                            showExternalPanel = true
-                        }
-                    } label: {
-                        Label("EXTERNAL", systemImage: "scope")
-                            .font(.caption.weight(.bold))
-                            .labelStyle(.titleAndIcon)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.red)
-                    .accessibilityLabel("Abrir EXTERNAL")
-                }
                 ToolbarItem(placement: .navigationBarLeading) { Text("EXTERNAL iOS").font(.headline.weight(.bold)) }
             }
             .sheet(isPresented: $showCreate) {
@@ -135,10 +121,6 @@ struct PatchProjectsView: View {
                 ) { project, password in
                     store.create(project: project, password: password)
                 }
-            }
-            .sheet(isPresented: $showExternalPanel) {
-                ExternalPanelView()
-                    .environmentObject(remoteControl)
             }
             .sheet(item: $draftCoordinator.request) { request in
                 PatchProjectEditorView(
@@ -1366,9 +1348,10 @@ private struct PatchActivityView: UIViewControllerRepresentable {
 }
 
 
-private struct ExternalPanelView: View {
+struct ExternalPanelView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var remoteControl: RemoteControlService
+    @AppStorage("externalTheme") private var externalTheme = "purple"
     @State private var selectedSection = 0
     @State private var aimOn = true
     @State private var headPriority = false
@@ -1384,7 +1367,10 @@ private struct ExternalPanelView: View {
     @State private var isStarting = false
     @State private var statusMessage: String?
 
-    private let red = Color(red: 0.92, green: 0.08, blue: 0.10)
+    private var accent: Color {
+        _ = externalTheme
+        return AppTheme.accent
+    }
     private let panel = Color(red: 0.055, green: 0.055, blue: 0.065)
     private let row = Color(red: 0.095, green: 0.095, blue: 0.11)
 
@@ -1428,7 +1414,7 @@ private struct ExternalPanelView: View {
         HStack(spacing: 10) {
             Image(systemName: "scope")
                 .font(.title3.weight(.bold))
-                .foregroundStyle(red)
+                .foregroundStyle(accent)
             VStack(alignment: .leading, spacing: 2) {
                 Text("EXTERNAL")
                     .font(.headline.weight(.bold))
@@ -1482,10 +1468,10 @@ private struct ExternalPanelView: View {
             }
             .foregroundStyle(selectedSection == index ? .white : .secondary)
             .frame(width: 58, height: 58)
-            .background(selectedSection == index ? red.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .background(selectedSection == index ? accent.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
             .overlay(alignment: .leading) {
                 if selectedSection == index {
-                    Capsule().fill(red).frame(width: 3, height: 32)
+                    Capsule().fill(accent).frame(width: 3, height: 32)
                 }
             }
         }
@@ -1526,10 +1512,10 @@ private struct ExternalPanelView: View {
                 HStack {
                     Text("Distância dos efeitos").font(.subheadline.weight(.semibold))
                     Spacer()
-                    Text("\(Int(effectDistance)) m").font(.caption.monospacedDigit()).foregroundStyle(red)
+                    Text("\(Int(effectDistance)) m").font(.caption.monospacedDigit()).foregroundStyle(accent)
                 }
                 Slider(value: $effectDistance, in: 20...250, step: 5)
-                    .tint(red)
+                    .tint(accent)
             }
             .padding(12)
             .background(row, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -1556,7 +1542,7 @@ private struct ExternalPanelView: View {
 
     private var percentageSelector: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("PRECISÃO").font(.caption2.weight(.bold)).tracking(1).foregroundStyle(red)
+            Text("PRECISÃO").font(.caption2.weight(.bold)).tracking(1).foregroundStyle(accent)
             HStack(spacing: 7) {
                 ForEach(["NORMAL", "90%", "85%", "75%", "65%"], id: \.self) { value in
                     Text(value)
@@ -1574,7 +1560,7 @@ private struct ExternalPanelView: View {
 
     private func sectionTitle(_ title: String, icon: String) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: icon).foregroundStyle(red)
+            Image(systemName: icon).foregroundStyle(accent)
             Text(title).font(.headline.weight(.bold)).tracking(1.2)
             Spacer()
         }
@@ -1583,12 +1569,12 @@ private struct ExternalPanelView: View {
 
     private func optionRow(_ title: String, icon: String, isOn: Binding<Bool>) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: icon).font(.subheadline).foregroundStyle(red).frame(width: 22)
+            Image(systemName: icon).font(.subheadline).foregroundStyle(accent).frame(width: 22)
             Text(title).font(.subheadline.weight(.semibold))
             Spacer()
             Toggle("", isOn: isOn)
                 .labelsHidden()
-                .toggleStyle(ExternalToggleStyle(accent: red))
+                .toggleStyle(ExternalToggleStyle(accent: accent))
         }
         .padding(.horizontal, 12)
         .frame(minHeight: 48)
@@ -1624,8 +1610,8 @@ private struct ExternalPanelView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 22)
                     .frame(minHeight: 44)
-                    .background(red, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-                    .shadow(color: red.opacity(0.3), radius: 10, y: 4)
+                    .background(accent, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .shadow(color: accent.opacity(0.3), radius: 10, y: 4)
                 }
                 .buttonStyle(ExternalPressStyle())
                 .disabled(isStarting)
