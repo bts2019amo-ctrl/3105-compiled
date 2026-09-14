@@ -211,7 +211,16 @@ final class RemoteControlService: ObservableObject {
         let summary = try PatchPackageCodec.inspect(data)
         guard !summary.isPasswordProtected else { throw PatchPackageError.invalidProject }
         let decoded = try PatchPackageCodec.decode(data, password: nil)
-        try PatchProjectLibrary.installImportedPackage(data: data, decoded: decoded, summary: summary, existingURL: existingURL, destinationURL: destinationURL)
+        _ = try PatchProjectLibrary.save(
+            data: data,
+            projectName: patch.filename,
+            existingURL: existingURL ?? destinationURL
+        )
+        if summary.schemaVersion >= 2 {
+            _ = try PatchWorkspaceService.replaceWorkspace(with: decoded.project)
+        } else {
+            try? PatchWorkspaceService.deleteWorkspace(projectID: decoded.project.id)
+        }
     }
 
     private func resolvedURL(_ value: String) -> String {
