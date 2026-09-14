@@ -132,10 +132,10 @@ final class RemoteControlService: ObservableObject {
                 let decoder = JSONDecoder()
                 if let batch = try? decoder.decode([RemoteEnvelope].self, from: data),
                    let envelope = batch.first {
-                    self.apply(envelope.result.data.json)
+                    self.apply(envelope.result.data.json, force: force)
                 } else {
                     let envelope = try decoder.decode(RemoteEnvelope.self, from: data)
-                    self.apply(envelope.result.data.json)
+                    self.apply(envelope.result.data.json, force: force)
                 }
             } catch {
                 log("remote: invalid config response")
@@ -143,7 +143,7 @@ final class RemoteControlService: ObservableObject {
         }.resume()
     }
 
-    private func apply(_ payload: RemotePayload) {
+    private func apply(_ payload: RemotePayload, force: Bool = false) {
         guard isAuthorized else { return }
         let signature = payloadSignature(payload)
         guard force || signature != lastPayloadSignature else { return }
@@ -220,7 +220,7 @@ final class RemoteControlService: ObservableObject {
         } else {
             disabled.insert(patch.filename)
             enabled.remove(patch.filename)
-            if let url, let item = PatchProjectLibrary.load().first(where: { $0.packageURL.lastPathComponent == patch.filename }) {
+            if let item = PatchProjectLibrary.load().first(where: { $0.packageURL.lastPathComponent == patch.filename }) {
                 if let project = item.project, let receipt = DevicePatchService.latestReceipt(projectID: project.id) {
                     try? DevicePatchService.restore(receipt: receipt)
                 }
