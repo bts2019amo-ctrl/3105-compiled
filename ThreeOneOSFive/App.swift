@@ -349,10 +349,17 @@ final class LicenseManager: ObservableObject {
             throw LicenseValidationError.invalidResponse
         }
         let status = (fields["status"] as? String)?.lowercased()
-        let valid = Self.booleanValue(fields["valid"] ?? fields["success"])
-        let expirationText = fields["expiresAt"] as? String ?? fields["expirationDate"] as? String
-        let expirationDate = expirationText.flatMap { ISO8601DateFormatter().date(from: $0) }
-        let expiresIn = (fields["expiresIn"] as? NSNumber)?.doubleValue
+        let valid = Self.booleanValue(
+            fields["valid"] ?? fields["success"] ?? fields["ok"]
+                ?? fields["isValid"] ?? fields["is_valid"]
+        )
+        let expirationValue = fields["expiresAt"] ?? fields["expirationDate"]
+            ?? fields["expires"] ?? fields["expiry"] ?? fields["validUntil"]
+            ?? fields["expiration"] ?? fields["expiresAtMs"] ?? fields["expirationTimestamp"]
+        let expirationDate = Self.expirationDate(from: expirationValue)
+        let expiresIn = Self.numberValue(
+            fields["remainingSeconds"] ?? fields["expiresIn"] ?? fields["daysRemaining"]
+        )
         let expiredByDate = expirationDate.map { $0 <= Date() } ?? false
         let expiredByDuration = expiresIn.map { $0 <= 0 } ?? false
         let activeStatus = status == "active" || status == "valid"
@@ -373,9 +380,32 @@ final class LicenseManager: ObservableObject {
         return nil
     }
 
+    private static func numberValue(_ value: Any?) -> Double? {
+        if let value = value as? NSNumber { return value.doubleValue }
+        if let value = value as? String { return Double(value) }
+        return nil
+    }
+
+    private static func expirationDate(from value: Any?) -> Date? {
+        if let number = numberValue(value) {
+            return Date(timeIntervalSince1970: number > 100_000_000_000 ? number / 1000 : number)
+        }
+        guard let text = value as? String else { return nil }
+        if let date = ISO8601DateFormatter().date(from: text) { return date }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter.date(from: text)
+    }
+
     private static func findLicenseFields(in value: Any) -> [String: Any] {
         if let dictionary = value as? [String: Any] {
-            let keys = ["valid", "success", "status", "expiresAt", "expirationDate", "expiresIn", "message", "reason"]
+            let keys = [
+                "valid", "success", "ok", "isValid", "is_valid", "status",
+                "expiresAt", "expirationDate", "expires", "expiry", "validUntil",
+                "expiration", "expiresAtMs", "expirationTimestamp", "remainingSeconds",
+                "expiresIn", "daysRemaining", "message", "reason"
+            ]
             if keys.contains(where: { dictionary[$0] != nil }) { return dictionary }
             for child in dictionary.values {
                 let found = findLicenseFields(in: child)
