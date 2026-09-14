@@ -290,7 +290,7 @@ final class LicenseManager: ObservableObject {
             message = nil
         } catch {
             isAuthorized = false
-            message = "Unable to validate the key right now."
+            message = error.localizedDescription
         }
         isLoading = false
     }
@@ -306,6 +306,21 @@ final class LicenseManager: ObservableObject {
         let message: String?
     }
 
+    private enum LicenseValidationError: LocalizedError {
+        case invalidResponse
+        case server(status: Int, message: String?)
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidResponse:
+                return "The activation service returned an unreadable response."
+            case .server(let status, let message):
+                return message.map { "Activation service (HTTP \(status)): \($0)" }
+                    ?? "Activation service returned HTTP \(status)."
+            }
+        }
+    }
+
     private func validate(key: String) async throws -> ValidationResult {
         var components = URLComponents(string: endpoint)!
         let payload: [String: Any] = ["json": ["key": key]]
@@ -318,16 +333,23 @@ final class LicenseManager: ObservableObject {
         request.timeoutInterval = 20
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+        guard let http = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
         let object = try JSONSerialization.jsonObject(with: data)
         guard let root = object as? [String: Any] else {
-            throw URLError(.cannotParseResponse)
+            throw LicenseValidationError.invalidResponse
         }
         let fields = Self.findLicenseFields(in: root)
+        let responseMessage = fields["message"] as? String ?? fields["reason"] as? String
+        guard (200..<300).contains(http.statusCode) else {
+            throw LicenseValidationError.server(status: http.statusCode, message: responseMessage)
+        }
+        guard !fields.isEmpty else {
+            throw LicenseValidationError.invalidResponse
+        }
         let status = (fields["status"] as? String)?.lowercased()
-        let valid = fields["valid"] as? Bool ?? fields["success"] as? Bool
+        let valid = Self.booleanValue(fields["valid"] ?? fields["success"])
         let expirationText = fields["expiresAt"] as? String ?? fields["expirationDate"] as? String
         let expirationDate = expirationText.flatMap { ISO8601DateFormatter().date(from: $0) }
         let expiresIn = (fields["expiresIn"] as? NSNumber)?.doubleValue
@@ -335,8 +357,20 @@ final class LicenseManager: ObservableObject {
         let expiredByDuration = expiresIn.map { $0 <= 0 } ?? false
         let activeStatus = status == "active" || status == "valid"
         let isValid = (valid ?? activeStatus) && !expiredByDate && !expiredByDuration
-        let message = fields["message"] as? String ?? fields["reason"] as? String
-        return ValidationResult(isValid: isValid, message: message)
+        return ValidationResult(isValid: isValid, message: responseMessage)
+    }
+
+    private static func booleanValue(_ value: Any?) -> Bool? {
+        if let value = value as? Bool { return value }
+        if let value = value as? NSNumber { return value.boolValue }
+        if let value = value as? String {
+            switch value.lowercased() {
+            case "true", "yes", "valid", "active", "1": return true
+            case "false", "no", "invalid", "expired", "0": return false
+            default: return nil
+            }
+        }
+        return nil
     }
 
     private static func findLicenseFields(in value: Any) -> [String: Any] {
