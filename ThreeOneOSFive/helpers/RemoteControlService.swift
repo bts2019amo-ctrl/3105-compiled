@@ -99,6 +99,11 @@ final class RemoteControlService: ObservableObject {
         isAuthorized = authorized
         if authorized {
             start()
+            for delay in [0.5, 2.0, 5.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    self?.refreshNow()
+                }
+            }
         } else {
             stop()
             DispatchQueue.main.async {
@@ -121,11 +126,14 @@ final class RemoteControlService: ObservableObject {
         }
         var request = URLRequest(url: endpoint)
         request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("EXTERNAL-SYSTEM/1.0", forHTTPHeaderField: "User-Agent")
         URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let self else { return }
             defer { self.isSyncing = false }
             guard error == nil, let data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-                log("remote: config request failed")
+                let status = (response as? HTTPURLResponse)?.statusCode ?? -1
+                log("remote: config request failed status=\(status) error=\(error?.localizedDescription ?? \"unknown\")")
                 return
             }
             do {
@@ -138,7 +146,7 @@ final class RemoteControlService: ObservableObject {
                     self.apply(envelope.result.data.json, force: force)
                 }
             } catch {
-                log("remote: invalid config response")
+                log("remote: invalid config response error=\(error.localizedDescription)")
             }
         }.resume()
     }
