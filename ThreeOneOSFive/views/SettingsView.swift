@@ -53,7 +53,6 @@ struct SettingsView: View {
                         .padding(.horizontal, 20).padding(.top, 15).padding(.bottom, 30)
                     }
                     .frame(maxWidth: .infinity)
-                }
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
