@@ -63,6 +63,7 @@ final class RemoteControlService: ObservableObject {
     private var timer: DispatchSourceTimer?
     private var isSyncing = false
     private var isAuthorized = false
+    private var appearanceSyncEnabled = false
     private var lastRevision = 0
     private var lastPayloadSignature = ""
     private let managedKey = "external-system.remote-managed-filenames"
@@ -85,6 +86,13 @@ final class RemoteControlService: ObservableObject {
         self.timer = timer
     }
 
+    func startAppearanceSync() {
+        appearanceSyncEnabled = true
+        queue.async { [weak self] in
+            self?.syncNow(force: true)
+        }
+    }
+
     func refreshNow() {
         guard isAuthorized else { return }
         queue.async { [weak self] in self?.syncNow(force: true) }
@@ -98,6 +106,7 @@ final class RemoteControlService: ObservableObject {
     func setAuthorized(_ authorized: Bool) {
         isAuthorized = authorized
         if authorized {
+            lastPayloadSignature = ""
             start()
             for delay in [0.5, 2.0, 5.0] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
@@ -107,16 +116,18 @@ final class RemoteControlService: ObservableObject {
         } else {
             stop()
             DispatchQueue.main.async {
-                self.backgroundURL = nil
-                self.backgroundVideoURL = nil
-                self.backgroundColor = AppTheme.pageBackground
+                if !self.appearanceSyncEnabled {
+                    self.backgroundURL = nil
+                    self.backgroundVideoURL = nil
+                    self.backgroundColor = AppTheme.pageBackground
+                }
                 self.patchCatalog = []
             }
         }
     }
 
     private func syncNow(force: Bool = false) {
-        guard isAuthorized, !isSyncing else { return }
+        guard (isAuthorized || appearanceSyncEnabled), !isSyncing else { return }
         isSyncing = true
         var components = URLComponents(url: baseURL.appendingPathComponent(EndpointVault.remoteConfigPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))), resolvingAgainstBaseURL: false)
         components?.queryItems = [URLQueryItem(name: "sync", value: String(Int(Date().timeIntervalSince1970)))]
@@ -153,7 +164,7 @@ final class RemoteControlService: ObservableObject {
     }
 
     private func apply(_ payload: RemotePayload, force: Bool = false) {
-        guard isAuthorized else { return }
+        guard isAuthorized || appearanceSyncEnabled else { return }
         let signature = payloadSignature(payload)
         guard force || signature != lastPayloadSignature else { return }
         lastPayloadSignature = signature
@@ -161,10 +172,14 @@ final class RemoteControlService: ObservableObject {
             self.backgroundURL = payload.config.backgroundUrl.flatMap { URL(string: self.resolvedURL($0)) }
             self.backgroundVideoURL = payload.config.backgroundVideoUrl.flatMap { URL(string: self.resolvedURL($0)) }
             self.backgroundColor = AppTheme.pageBackground
-            self.patchCatalog = payload.patches.filter(\.enabled).map(\.info)
+            if self.isAuthorized {
+                self.patchCatalog = payload.patches.filter(\.enabled).map(\.info)
+            }
         }
         lastRevision = payload.config.revision
-        queue.async { self.reconcile(patches: payload.patches) }
+        if isAuthorized {
+            queue.async { self.reconcile(patches: payload.patches) }
+        }
     }
 
     private func payloadSignature(_ payload: RemotePayload) -> String {

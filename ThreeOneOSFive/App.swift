@@ -40,10 +40,12 @@ struct ThreeOneOSFiveApp: App {
             ZStack {
                 if licenseManager.isLoading {
                     ActivationLoadingView()
+                        .environmentObject(remoteControl)
                 } else if !licenseManager.isAuthorized {
                     ActivationView(manager: licenseManager) { key in
                         await licenseManager.activate(key: key)
                     }
+                    .environmentObject(remoteControl)
                     .environment(\.appLanguage, language)
                     .environment(\.locale, language.locale)
                 } else {
@@ -67,6 +69,7 @@ struct ThreeOneOSFiveApp: App {
                             appState.detectSupport()
                             checkForUpdate()
                         }
+                        .environmentObject(remoteControl)
                         .environment(\.appLanguage, language)
                         .environment(\.locale, language.locale)
                         .transition(
@@ -96,6 +99,7 @@ struct ThreeOneOSFiveApp: App {
             }
             .onAppear {
                 licenseManager.refresh()
+                remoteControl.startAppearanceSync()
                 remoteControl.setAuthorized(licenseManager.isAuthorized)
                 if licenseManager.isAuthorized, !showLaunchSequence {
                     appState.detectSupport()

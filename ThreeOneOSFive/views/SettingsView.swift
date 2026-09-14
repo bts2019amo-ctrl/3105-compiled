@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var remoteControl: RemoteControlService
     @AppStorage("externalTheme") private var theme = "purple"
     @AppStorage(FeatureVisibility.cleanerStorageKey) private var cleanerEnabled = true
     @AppStorage(FeatureVisibility.developerModeStorageKey) private var developerModeEnabled = false
@@ -11,8 +12,15 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
+            ZStack {
+                RemoteBackdropView(
+                    imageURL: remoteControl.backgroundURL,
+                    videoURL: remoteControl.backgroundVideoURL,
+                    color: remoteControl.backgroundColor
+                )
+                .ignoresSafeArea()
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
                     settingsHero
                     settingsSection(title: "APPEARANCE") {
                         themeRow
@@ -42,9 +50,11 @@ struct SettingsView: View {
                     }
                     HStack { Spacer(); Text("EXTERNAL iOS · SECURE · SIMPLE · READY").font(.caption2.weight(.bold)).tracking(1).foregroundStyle(.secondary); Spacer() }.padding(.top, 5)
                 }
-                .padding(.horizontal, 20).padding(.top, 15).padding(.bottom, 30)
+                        .padding(.horizontal, 20).padding(.top, 15).padding(.bottom, 30)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
             }
-            .background(AppTheme.pageBackground.ignoresSafeArea())
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Done") { dismiss() }.fontWeight(.semibold).foregroundStyle(themeAccent) } }

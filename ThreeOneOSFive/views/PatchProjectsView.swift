@@ -318,8 +318,13 @@ struct PatchProjectsView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.white.opacity(0.18), lineWidth: 0.7) }
+        .background(AppTheme.glassBase.opacity(0.72), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.22), lineWidth: 0.7)
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
     private func wallpaperRow(_ package: WallpaperStagedPackage) -> some View {

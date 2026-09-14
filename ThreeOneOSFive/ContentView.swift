@@ -54,10 +54,11 @@ struct ContentView: View {
             .ignoresSafeArea()
 
             Group {
-                PatchProjectsView(
-                    onOpenSettings: openSettings,
-                    onOpenLogs: {}
-                )
+                if horizontalSizeClass == .regular {
+                    regularLayout
+                } else {
+                    compactLayout
+                }
             }
         }
         .background(Color.clear)
@@ -250,7 +251,7 @@ private extension AppSection {
     }
 }
 
-private struct RemoteBackdropView: View {
+struct RemoteBackdropView: View {
     let imageURL: URL?
     let videoURL: URL?
     let color: Color

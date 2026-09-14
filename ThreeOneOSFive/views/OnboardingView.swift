@@ -494,9 +494,16 @@ enum OnboardingStore {
 
 
 struct ActivationLoadingView: View {
+    @EnvironmentObject private var remoteControl: RemoteControlService
+
     var body: some View {
         ZStack {
-            AppTheme.pageGradient.ignoresSafeArea()
+            RemoteBackdropView(
+                imageURL: remoteControl.backgroundURL,
+                videoURL: remoteControl.backgroundVideoURL,
+                color: remoteControl.backgroundColor
+            )
+            .ignoresSafeArea()
             VStack(spacing: 18) {
                 ProgressView()
                     .controlSize(.large)
@@ -513,6 +520,7 @@ struct ActivationLoadingView: View {
 struct ActivationView: View {
     @Environment(\.appLanguage) private var language
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @EnvironmentObject private var remoteControl: RemoteControlService
     @ObservedObject var manager: LicenseManager
     @State private var key = ""
     @State private var isSubmitting = false
@@ -521,7 +529,12 @@ struct ActivationView: View {
 
     var body: some View {
         ZStack {
-            AppTheme.pageGradient.ignoresSafeArea()
+            RemoteBackdropView(
+                imageURL: remoteControl.backgroundURL,
+                videoURL: remoteControl.backgroundVideoURL,
+                color: remoteControl.backgroundColor
+            )
+            .ignoresSafeArea()
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     Spacer(minLength: 34)
@@ -674,13 +687,19 @@ private enum LaunchSequencePhase {
 }
 
 struct LaunchSequenceView: View {
+    @EnvironmentObject private var remoteControl: RemoteControlService
     @State private var phase: LaunchSequencePhase = .loading
     @State private var progress = 72
     let onContinue: () -> Void
 
     var body: some View {
         ZStack {
-            AppTheme.pageGradient.ignoresSafeArea()
+            RemoteBackdropView(
+                imageURL: remoteControl.backgroundURL,
+                videoURL: remoteControl.backgroundVideoURL,
+                color: remoteControl.backgroundColor
+            )
+            .ignoresSafeArea()
             Circle()
                 .fill(AppTheme.accent.opacity(0.14))
                 .frame(width: 360, height: 360)
