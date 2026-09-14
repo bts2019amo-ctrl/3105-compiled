@@ -42,18 +42,24 @@ jobs:
         run: |
           set -e
           path="${{ steps.detect.outputs.path }}"
-          scheme=$(basename "$path" | sed -E 's/\\.(xcworkspace|xcodeproj)$//')
           if [[ "${{ steps.detect.outputs.kind }}" == "workspace" ]]; then
-            xcodebuild -workspace "$path" -scheme "$scheme" -configuration Release -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+            scheme=$(xcodebuild -list -json -workspace "$path" | jq -r '.workspace.schemes[0]')
           else
-            xcodebuild -project "$path" -scheme "$scheme" -configuration Release -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+            scheme=$(xcodebuild -list -json -project "$path" | jq -r '.project.schemes[0]')
+          fi
+          test -n "$scheme" && test "$scheme" != "null"
+          echo "Building scheme: $scheme"
+          if [[ "${{ steps.detect.outputs.kind }}" == "workspace" ]]; then
+            xcodebuild -workspace "$path" -scheme "$scheme" -configuration Release -sdk iphoneos -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+          else
+            xcodebuild -project "$path" -scheme "$scheme" -configuration Release -sdk iphoneos -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
           fi
       - name: Package IPA
         if: success()
         shell: bash
         run: |
           set -e
-          app=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' -print -quit)
+          app=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' -print -quit)
           test -n "$app"
           mkdir -p ipa/Payload
           cp -R "$app" ipa/Payload/
@@ -70,5 +76,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-build-app
-          path: build/Build/Products/Release-iphonesimulator
+          path: build/Build/Products/Release-iphoneos
           if-no-files-found: error
