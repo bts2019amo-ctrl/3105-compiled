@@ -17,6 +17,7 @@ struct PatchProjectsView: View {
     @Environment(\.appLanguage) private var language
     @EnvironmentObject private var draftCoordinator: PatchDraftCoordinator
     @EnvironmentObject private var store: PatchProjectStore
+    @EnvironmentObject private var remoteControl: RemoteControlService
     @State private var showCreate = false
     @State private var wallpaperPackages: [WallpaperStagedPackage] = []
     @State private var wallpaperImportFeedback: WallpaperImportFeedback?
@@ -35,6 +36,15 @@ struct PatchProjectsView: View {
 
     private var filteredWallpaperPackages: [WallpaperStagedPackage] {
         wallpaperPackages
+    }
+
+    private var remotePatchesForSelection: [RemotePatchInfo] {
+        remoteControl.patchCatalog.filter { patch in
+            let value = "\(patch.game) \(patch.target) \(patch.category)".uppercased()
+            return selectedCollection == "FF MAX"
+                ? value.contains("MAX")
+                : !value.contains("MAX")
+        }
     }
 
     private var hasLocalContent: Bool {
@@ -58,8 +68,6 @@ struct PatchProjectsView: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
-                    installedHeader
-                    accessBanner
                     selectionCard
                     compatibilityCard
                     if !filteredItems.isEmpty || !filteredWallpaperPackages.isEmpty {
@@ -240,7 +248,11 @@ struct PatchProjectsView: View {
     private var installedContentCard: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(selectedCollection).font(.caption2.weight(.bold)).tracking(1.2).foregroundStyle(.secondary).padding(.horizontal, 4).padding(.bottom, 5)
-            if selectedCollection == "FF MAX" {
+            if !remotePatchesForSelection.isEmpty {
+                ForEach(remotePatchesForSelection, id: \.id) { patch in
+                    remotePatchRow(patch).padding(.vertical, 5)
+                }
+            } else if selectedCollection == "FF MAX" {
                 ForEach(filteredWallpaperPackages) { package in wallpaperRow(package).padding(.vertical, 5) }
             } else {
                 ForEach(filteredItems) { item in itemRow(item).padding(.vertical, 5) }
@@ -266,6 +278,29 @@ struct PatchProjectsView: View {
         guard let request = draftCoordinator.importRequest else { return }
         draftCoordinator.clearImport()
         store.importPackage(from: request.source)
+    }
+
+    private func remotePatchRow(_ patch: RemotePatchInfo) -> some View {
+        HStack(spacing: 12) {
+            AppRowIcon(systemName: "shippingbox.fill")
+            VStack(alignment: .leading, spacing: 3) {
+                Text(patch.name).font(.body.weight(.semibold)).lineLimit(1)
+                Text("\(patch.category) · \(patch.game)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Toggle("", isOn: Binding(
+                get: { remoteControl.isPatchActive(patch) },
+                set: { remoteControl.setPatchActive(patch, active: $0) }
+            ))
+            .labelsHidden()
+            .toggleStyle(LiquidGlassToggleStyle())
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(Color.white.opacity(0.18), lineWidth: 0.7) }
     }
 
     private func wallpaperRow(_ package: WallpaperStagedPackage) -> some View {
@@ -360,18 +395,8 @@ struct PatchProjectsView: View {
 
     @ViewBuilder
     private func itemRow(_ item: PatchLibraryItem) -> some View {
-        if item.isLocked {
-            Button { store.requestUnlock(for: item) } label: {
-                PatchProjectRow(item: item, language: language)
-            }
-            .buttonStyle(.plain)
-        } else {
-            NavigationLink {
-                PatchProjectDetailView(store: store, projectID: item.id)
-            } label: {
-                PatchProjectRow(item: item, language: language)
-            }
-        }
+        PatchProjectRow(item: item, language: language)
+            .allowsHitTesting(false)
     }
 
     private var emptyState: some View {

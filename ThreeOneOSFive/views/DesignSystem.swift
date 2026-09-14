@@ -76,6 +76,29 @@ extension View {
     }
 }
 
+struct LiquidGlassToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.18)) { configuration.isOn.toggle() }
+        } label: {
+            ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                Capsule(style: .continuous)
+                    .fill(configuration.isOn ? AppTheme.accent.opacity(0.82) : Color.white.opacity(0.16))
+                    .overlay(Capsule().stroke(Color.white.opacity(0.38), lineWidth: 0.8))
+                    .frame(width: 52, height: 31)
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .overlay(Circle().stroke(Color.white.opacity(0.7), lineWidth: 0.7))
+                    .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+                    .frame(width: 27, height: 27)
+                    .padding(2)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct AppCardBorder: View {
     var body: some View {
         RoundedRectangle(

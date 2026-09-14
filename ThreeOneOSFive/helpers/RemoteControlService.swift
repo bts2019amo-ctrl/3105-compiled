@@ -66,6 +66,7 @@ final class RemoteControlService: ObservableObject {
     private var lastRevision = 0
     private var lastPayloadSignature = ""
     private let managedKey = "external-system.remote-managed-filenames"
+    private let disabledKey = "external-system.remote-disabled-filenames"
 
     @Published private(set) var backgroundURL: URL?
     @Published private(set) var backgroundVideoURL: URL?
@@ -101,6 +102,7 @@ final class RemoteControlService: ObservableObject {
             stop()
             DispatchQueue.main.async {
                 self.backgroundURL = nil
+                self.backgroundVideoURL = nil
                 self.backgroundColor = AppTheme.pageBackground
                 self.patchCatalog = []
             }
@@ -140,12 +142,9 @@ final class RemoteControlService: ObservableObject {
         guard signature != lastPayloadSignature else { return }
         lastPayloadSignature = signature
         DispatchQueue.main.async {
-            AppTheme.accent = Color(hex: payload.config.accentColor)
-            AppTheme.secondaryAccent = Color(hex: payload.config.secondaryColor)
-            AppTheme.pageBackground = Color(hex: payload.config.backgroundColor)
             self.backgroundURL = payload.config.backgroundUrl.flatMap { URL(string: self.resolvedURL($0)) }
             self.backgroundVideoURL = payload.config.backgroundVideoUrl.flatMap { URL(string: self.resolvedURL($0)) }
-            self.backgroundColor = Color(hex: payload.config.backgroundColor)
+            self.backgroundColor = AppTheme.pageBackground
             self.patchCatalog = payload.patches.filter(\.enabled).map(\.info)
         }
         lastRevision = payload.config.revision
@@ -164,9 +163,11 @@ final class RemoteControlService: ObservableObject {
         guard isAuthorized else { return }
         guard let root = try? PatchProjectLibrary.packageRootURL() else { return }
         let active = Set(patches.filter(\.enabled).map(\.filename))
+        let disabled = Set(UserDefaults.standard.stringArray(forKey: disabledKey) ?? [])
         var managed = Set(UserDefaults.standard.stringArray(forKey: managedKey) ?? [])
         for patch in patches where patch.enabled {
             guard isAuthorized else { return }
+            if disabled.contains(patch.filename) { continue }
             do {
                 let url = root.appendingPathComponent(patch.filename)
                 let exists = FileManager.default.fileExists(atPath: url.path)
@@ -192,6 +193,28 @@ final class RemoteControlService: ObservableObject {
             managed.remove(filename)
         }
         UserDefaults.standard.set(Array(managed), forKey: managedKey)
+        DispatchQueue.main.async { NotificationCenter.default.post(name: Self.patchesDidChange, object: nil) }
+    }
+
+    func isPatchActive(_ patch: RemotePatchInfo) -> Bool {
+        !Set(UserDefaults.standard.stringArray(forKey: disabledKey) ?? []).contains(patch.filename)
+    }
+
+    func setPatchActive(_ patch: RemotePatchInfo, active: Bool) {
+        var disabled = Set(UserDefaults.standard.stringArray(forKey: disabledKey) ?? [])
+        let root = try? PatchProjectLibrary.packageRootURL()
+        let url = root?.appendingPathComponent(patch.filename)
+        if active {
+            disabled.remove(patch.filename)
+            refreshNow()
+        } else {
+            disabled.insert(patch.filename)
+            if let url, let item = PatchProjectLibrary.load().first(where: { $0.packageURL.lastPathComponent == patch.filename }) {
+                try? PatchProjectLibrary.delete(item)
+            }
+            if let url { try? FileManager.default.removeItem(at: url) }
+        }
+        UserDefaults.standard.set(Array(disabled), forKey: disabledKey)
         DispatchQueue.main.async { NotificationCenter.default.post(name: Self.patchesDidChange, object: nil) }
     }
 
