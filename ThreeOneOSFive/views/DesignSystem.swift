@@ -10,6 +10,9 @@ enum AppTheme {
     )
     static let pageBackground = Color(uiColor: .systemGroupedBackground)
     static let consoleBackground = Color(uiColor: .secondarySystemGroupedBackground)
+    static let glassBase = Color(uiColor: .systemBackground)
+    static let glassHighlight = Color.white.opacity(0.42)
+    static let glassShadow = Color.black.opacity(0.12)
     static let pageInset: CGFloat = 20
     static let rowIconSize: CGFloat = 17
     static let rowIconFrame: CGFloat = 28
@@ -22,6 +25,33 @@ enum AppTheme {
     static let contentCardCornerRadius: CGFloat = 24
     static let contentCardInset: CGFloat = 16
     static let contentCardPadding: CGFloat = 16
+
+    static var pageGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                pageBackground,
+                accent.opacity(0.055),
+                Color(uiColor: .systemBackground)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+}
+
+struct LiquidGlassRootModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .fontDesign(.rounded)
+            .tint(AppTheme.accent)
+            .background(AppTheme.pageGradient.ignoresSafeArea())
+    }
+}
+
+extension View {
+    func liquidGlassRoot() -> some View {
+        modifier(LiquidGlassRootModifier())
+    }
 }
 
 struct AppCardBorder: View {
@@ -46,11 +76,27 @@ struct AppCardBorder: View {
 struct AppGlassRowBackground: View {
     var body: some View {
         RoundedRectangle(cornerRadius: 18, style: .continuous)
-            .fill(.regularMaterial)
+            .fill(.ultraThinMaterial)
+            .overlay {
+                LinearGradient(
+                    colors: [AppTheme.glassHighlight, .clear, AppTheme.accent.opacity(0.06)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            }
             .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.28), lineWidth: 0.7)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.68), AppTheme.accent.opacity(0.18), Color.white.opacity(0.16)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 0.8
+                    )
             }
+            .shadow(color: AppTheme.glassShadow, radius: 14, y: 7)
             .padding(.vertical, 4)
     }
 }
@@ -121,7 +167,7 @@ struct AppSearchField: View {
         )
         .padding(.horizontal, AppTheme.pageInset)
         .padding(.vertical, 8)
-        .background(.bar)
+        .background(.ultraThinMaterial)
     }
 }
 

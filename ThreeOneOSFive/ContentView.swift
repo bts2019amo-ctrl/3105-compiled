@@ -51,6 +51,7 @@ struct ContentView: View {
             }
         }
         .background(AppTheme.pageBackground.ignoresSafeArea())
+        .liquidGlassRoot()
         .tint(AppTheme.accent)
         .imageScale(.small)
         .onChange(of: patchDraftCoordinator.request?.id) { requestID in

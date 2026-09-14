@@ -195,6 +195,7 @@ struct PatchProjectsView: View {
                     onOpenLogs: onOpenLogs
                 )
             }
+            .liquidGlassRoot()
             .sheet(isPresented: $showImporter) {
                 FileDocumentPicker(
                     allowedContentTypes: PatchPackagePickerPolicy.allowedContentTypes,

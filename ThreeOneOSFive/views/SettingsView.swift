@@ -115,6 +115,7 @@ struct SettingsView: View {
                         .fontWeight(.semibold)
                 }
             }
+            .liquidGlassRoot()
         }
     }
 
