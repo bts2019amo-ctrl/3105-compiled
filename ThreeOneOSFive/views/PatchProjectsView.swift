@@ -26,6 +26,7 @@ struct PatchProjectsView: View {
     @State private var showSimulatedWallpaperDetail = false
     @State private var simulatedWallpaperDetailGate = OneShotPresentationGate()
     @State private var showThemeMenu = false
+    @State private var showExternalPanel = false
     @State private var selectedCollection = "FF NORMAL"
     @AppStorage("externalTheme") private var externalTheme = "purple"
     let onOpenSettings: () -> Void
@@ -111,6 +112,20 @@ struct PatchProjectsView: View {
                         )
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+                            showExternalPanel = true
+                        }
+                    } label: {
+                        Label("EXTERNAL", systemImage: "scope")
+                            .font(.caption.weight(.bold))
+                            .labelStyle(.titleAndIcon)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.red)
+                    .accessibilityLabel("Abrir EXTERNAL")
+                }
                 ToolbarItem(placement: .navigationBarLeading) { Text("EXTERNAL iOS").font(.headline.weight(.bold)) }
             }
             .sheet(isPresented: $showCreate) {
@@ -120,6 +135,10 @@ struct PatchProjectsView: View {
                 ) { project, password in
                     store.create(project: project, password: password)
                 }
+            }
+            .sheet(isPresented: $showExternalPanel) {
+                ExternalPanelView()
+                    .environmentObject(remoteControl)
             }
             .sheet(item: $draftCoordinator.request) { request in
                 PatchProjectEditorView(
@@ -1344,4 +1363,326 @@ private struct PatchActivityView: UIViewControllerRepresentable {
         _ uiViewController: UIActivityViewController,
         context: Context
     ) {}
+}
+
+
+private struct ExternalPanelView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var remoteControl: RemoteControlService
+    @State private var selectedSection = 0
+    @State private var aimOn = true
+    @State private var headPriority = false
+    @State private var fineAim = false
+    @State private var quickHeal = false
+    @State private var boxESP = true
+    @State private var healthESP = true
+    @State private var nameESP = true
+    @State private var distanceESP = false
+    @State private var directionESP = false
+    @State private var markEnemies = false
+    @State private var effectDistance = 120.0
+    @State private var isStarting = false
+    @State private var statusMessage: String?
+
+    private let red = Color(red: 0.92, green: 0.08, blue: 0.10)
+    private let panel = Color(red: 0.055, green: 0.055, blue: 0.065)
+    private let row = Color(red: 0.095, green: 0.095, blue: 0.11)
+
+    private var panelSystemPatch: RemotePatchInfo? {
+        remoteControl.patchCatalog.first {
+            $0.name.localizedCaseInsensitiveContains("painel system")
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 0) {
+                header
+                HStack(spacing: 0) {
+                    sidebar
+                    ScrollView(showsIndicators: false) {
+                        VStack(alignment: .leading, spacing: 16) {
+                            sectionContent
+                            Spacer(minLength: 12)
+                        }
+                        .padding(16)
+                    }
+                }
+                footer
+            }
+            .background(panel)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 0.8)
+            }
+            .padding(10)
+        }
+        .preferredColorScheme(.dark)
+        .presentationDragIndicator(.visible)
+        .presentationDetents([.large])
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "scope")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(red)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("EXTERNAL")
+                    .font(.headline.weight(.bold))
+                    .tracking(1.1)
+                Text("PAINEL EXTERNO")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .tracking(0.8)
+            }
+            Spacer()
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 30)
+                    .background(Color.white.opacity(0.08), in: Circle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .background(Color.black.opacity(0.28))
+    }
+
+    private var sidebar: some View {
+        VStack(spacing: 12) {
+            Spacer(minLength: 8)
+            sidebarButton(icon: "scope", title: "MIRA", index: 0)
+            sidebarButton(icon: "eye.fill", title: "ESP", index: 1)
+            sidebarButton(icon: "gearshape.2.fill", title: "GERAL", index: 2)
+            sidebarButton(icon: "figure.stand", title: "RAIO-X", index: 3)
+            Spacer()
+        }
+        .frame(width: 76)
+        .background(Color.black.opacity(0.2))
+    }
+
+    private func sidebarButton(icon: String, title: String, index: Int) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
+                selectedSection = index
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            VStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 8, weight: .bold))
+                    .tracking(0.4)
+            }
+            .foregroundStyle(selectedSection == index ? .white : .secondary)
+            .frame(width: 58, height: 58)
+            .background(selectedSection == index ? red.opacity(0.16) : Color.clear, in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+            .overlay(alignment: .leading) {
+                if selectedSection == index {
+                    Capsule().fill(red).frame(width: 3, height: 32)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var sectionContent: some View {
+        switch selectedSection {
+        case 0: aimSection
+        case 1: espSection
+        case 2: generalSection
+        default: xraySection
+        }
+    }
+
+    private var aimSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("AIMBOT", icon: "scope")
+            optionRow("Aimbot ao disparar", icon: "scope", isOn: $aimOn)
+            optionRow("Priorizar cabeça", icon: "target", isOn: $headPriority)
+            optionRow("Ajuste fino da mira", icon: "slider.horizontal.3", isOn: $fineAim)
+            optionRow("Cura rápida", icon: "cross.case.fill", isOn: $quickHeal)
+            percentageSelector
+        }
+    }
+
+    private var espSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("PLAYER ESP", icon: "eye.fill")
+            optionRow("Caixa", icon: "square.dashed", isOn: $boxESP)
+            optionRow("Vida", icon: "heart.fill", isOn: $healthESP)
+            optionRow("Nome", icon: "person.fill", isOn: $nameESP)
+            optionRow("Distância", icon: "ruler.fill", isOn: $distanceESP)
+            optionRow("Direção", icon: "location.north.fill", isOn: $directionESP)
+            optionRow("Marcar inimigos", icon: "mappin.and.ellipse", isOn: $markEnemies)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Distância dos efeitos").font(.subheadline.weight(.semibold))
+                    Spacer()
+                    Text("\(Int(effectDistance)) m").font(.caption.monospacedDigit()).foregroundStyle(red)
+                }
+                Slider(value: $effectDistance, in: 20...250, step: 5)
+                    .tint(red)
+            }
+            .padding(12)
+            .background(row, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private var generalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("GERAL", icon: "gearshape.2.fill")
+            optionRow("Modo seguro", icon: "checkmark.shield.fill", isOn: .constant(true))
+            optionRow("Reduzir efeitos", icon: "sparkles", isOn: .constant(false))
+            optionRow("Mostrar status", icon: "info.circle.fill", isOn: .constant(true))
+        }
+    }
+
+    private var xraySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionTitle("RAIO-X", icon: "figure.stand")
+            optionRow("Esqueleto", icon: "figure.stand", isOn: .constant(false))
+            optionRow("Linhas de direção", icon: "point.3.connected.trianglepath.dotted", isOn: .constant(false))
+            optionRow("Alerta de proximidade", icon: "bell.badge.fill", isOn: .constant(false))
+        }
+    }
+
+    private var percentageSelector: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("PRECISÃO").font(.caption2.weight(.bold)).tracking(1).foregroundStyle(red)
+            HStack(spacing: 7) {
+                ForEach(["NORMAL", "90%", "85%", "75%", "65%"], id: \.self) { value in
+                    Text(value)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(value == "NORMAL" ? .black : .white)
+                        .padding(.horizontal, 10)
+                        .frame(minHeight: 32)
+                        .background(value == "NORMAL" ? .white : Color.white.opacity(0.08), in: Capsule())
+                }
+            }
+        }
+        .padding(12)
+        .background(row, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func sectionTitle(_ title: String, icon: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon).foregroundStyle(red)
+            Text(title).font(.headline.weight(.bold)).tracking(1.2)
+            Spacer()
+        }
+        .padding(.bottom, 2)
+    }
+
+    private func optionRow(_ title: String, icon: String, isOn: Binding<Bool>) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon).font(.subheadline).foregroundStyle(red).frame(width: 22)
+            Text(title).font(.subheadline.weight(.semibold))
+            Spacer()
+            Toggle("", isOn: isOn)
+                .labelsHidden()
+                .toggleStyle(ExternalToggleStyle(accent: red))
+        }
+        .padding(.horizontal, 12)
+        .frame(minHeight: 48)
+        .background(row, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private var footer: some View {
+        VStack(spacing: 9) {
+            if let statusMessage {
+                Text(statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(statusMessage.contains("ativado") ? .green : .secondary)
+                    .lineLimit(2)
+            }
+            HStack(spacing: 12) {
+                Button {
+                    statusMessage = "Configurações limpas"
+                } label: {
+                    Label("LIMPAR DADOS", systemImage: "trash")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                Button(action: startPanelSystem) {
+                    HStack(spacing: 8) {
+                        if isStarting { ProgressView().tint(.white) }
+                        else { Image(systemName: "play.fill") }
+                        Text(isStarting ? "INICIANDO" : "INICIAR")
+                            .font(.subheadline.weight(.bold))
+                            .tracking(0.8)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 22)
+                    .frame(minHeight: 44)
+                    .background(red, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .shadow(color: red.opacity(0.3), radius: 10, y: 4)
+                }
+                .buttonStyle(ExternalPressStyle())
+                .disabled(isStarting)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
+        .background(Color.black.opacity(0.34))
+    }
+
+    private func startPanelSystem() {
+        guard let patch = panelSystemPatch else {
+            statusMessage = "PAINEL SYSTEM não está disponível no catálogo remoto."
+            return
+        }
+        isStarting = true
+        statusMessage = "Preparando PAINEL SYSTEM..."
+        withAnimation(.easeInOut(duration: 0.2)) {
+            remoteControl.setPatchActive(patch, active: true)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            isStarting = false
+            statusMessage = "PAINEL SYSTEM ativado"
+        }
+    }
+}
+
+private struct ExternalToggleStyle: ToggleStyle {
+    let accent: Color
+
+    func makeBody(configuration: Configuration) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                configuration.isOn.toggle()
+            }
+        } label: {
+            Capsule(style: .continuous)
+                .fill(configuration.isOn ? accent : Color(uiColor: .systemGray4))
+                .frame(width: 45, height: 26)
+                .overlay(alignment: configuration.isOn ? .trailing : .leading) {
+                    Circle()
+                        .fill(.white)
+                        .frame(width: 22, height: 22)
+                        .shadow(color: .black.opacity(0.22), radius: 2, y: 1)
+                        .padding(2)
+                }
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+private struct ExternalPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .opacity(configuration.isPressed ? 0.82 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
 }
