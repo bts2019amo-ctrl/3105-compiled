@@ -40,11 +40,18 @@ enum AppTheme {
 }
 
 struct LiquidGlassRootModifier: ViewModifier {
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
-            .fontDesign(.rounded)
-            .tint(AppTheme.accent)
-            .background(AppTheme.pageGradient.ignoresSafeArea())
+        if #available(iOS 16.1, *) {
+            content
+                .fontDesign(.rounded)
+                .tint(AppTheme.accent)
+                .background(AppTheme.pageGradient.ignoresSafeArea())
+        } else {
+            content
+                .tint(AppTheme.accent)
+                .background(AppTheme.pageGradient.ignoresSafeArea())
+        }
     }
 }
 
