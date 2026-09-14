@@ -133,7 +133,8 @@ final class RemoteControlService: ObservableObject {
             defer { self.isSyncing = false }
             guard error == nil, let data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
                 let status = (response as? HTTPURLResponse)?.statusCode ?? -1
-                log("remote: config request failed status=\(status) error=\(error?.localizedDescription ?? \"unknown\")")
+                let errorMessage = error?.localizedDescription ?? "unknown"
+                log("remote: config request failed status=\(status) error=\(errorMessage)")
                 return
             }
             do {
