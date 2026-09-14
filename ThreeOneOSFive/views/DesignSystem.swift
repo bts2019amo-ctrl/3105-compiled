@@ -43,6 +43,18 @@ struct AppCardBorder: View {
     }
 }
 
+struct AppGlassRowBackground: View {
+    var body: some View {
+        RoundedRectangle(cornerRadius: 18, style: .continuous)
+            .fill(.regularMaterial)
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.28), lineWidth: 0.7)
+            }
+            .padding(.vertical, 4)
+    }
+}
+
 struct AppRowIcon: View {
     let systemName: String
     var tint: Color = AppTheme.accent
@@ -52,7 +64,15 @@ struct AppRowIcon: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(tint.opacity(0.12))
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(tint.opacity(0.12))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .stroke(tint.opacity(0.22), lineWidth: 0.6)
+                        }
+                }
             Image(systemName: systemName)
                 .font(.system(size: symbolSize, weight: .medium))
                 .foregroundStyle(tint)

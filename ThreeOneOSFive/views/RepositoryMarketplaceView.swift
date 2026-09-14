@@ -1028,14 +1028,9 @@ struct AppUtilityToolbar: ToolbarContent {
                         systemImage: "gearshape"
                     )
                 }
-                Button(action: onOpenLogs) {
-                    Label(
-                        language.text("accessibility.open_logs"),
-                        systemImage: "apple.terminal"
-                    )
-                }
             } label: {
-                Image(systemName: "gearshape")
+                Image(systemName: "gearshape.fill")
+                    .symbolRenderingMode(.hierarchical)
             }
             .accessibilityLabel(language.text("accessibility.open_settings"))
         }

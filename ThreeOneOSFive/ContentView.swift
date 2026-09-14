@@ -11,7 +11,6 @@ struct ContentView: View {
     private var developerModeEnabled = false
     @State private var tabNavigation: AppTabNavigationState
     @State private var showSettings = false
-    @State private var showLogs = false
 
     init() {
 #if targetEnvironment(simulator)
@@ -67,7 +66,6 @@ struct ContentView: View {
             tabNavigation.reconcileSelection(with: featureVisibility)
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
-        .sheet(isPresented: $showLogs) { LogView() }
         .patchStorePresentation(patchStore)
         .repositoryStorePresentation(repositoryStore, patchStore: patchStore)
     }
@@ -127,33 +125,33 @@ struct ContentView: View {
         case .home:
             RepositoryHomeView(
                 onOpenSettings: openSettings,
-                onOpenLogs: openLogs
+                onOpenLogs: {}
             )
         case .new:
             RepositoryNewView(
                 onOpenSettings: openSettings,
-                onOpenLogs: openLogs
+                onOpenLogs: {}
             )
         case .sources:
             RepositorySourcesView(
                 onOpenSettings: openSettings,
-                onOpenLogs: openLogs
+                onOpenLogs: {}
             )
         case .installed:
             PatchProjectsView(
                 onOpenSettings: openSettings,
-                onOpenLogs: openLogs
+                onOpenLogs: {}
             )
         case .files:
             AppDataBrowserView(
                 tabSession: filesTabSession,
                 onOpenSettings: openSettings,
-                onOpenLogs: openLogs
+                onOpenLogs: {}
             )
         case .search:
             RepositorySearchView(
                 onOpenSettings: openSettings,
-                onOpenLogs: openLogs
+                onOpenLogs: {}
             )
         }
     }
@@ -197,9 +195,6 @@ struct ContentView: View {
         showSettings = true
     }
 
-    private func openLogs() {
-        showLogs = true
-    }
 }
 
 private struct CompactTabLabel: View {
