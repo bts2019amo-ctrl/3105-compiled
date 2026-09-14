@@ -48,10 +48,27 @@ jobs:
           else
             xcodebuild -project "$path" -scheme "$scheme" -configuration Release -sdk iphonesimulator -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
           fi
-      - name: Upload build artifacts
+      - name: Package IPA
+        if: success()
+        shell: bash
+        run: |
+          set -e
+          app=$(find build/Build/Products/Release-iphonesimulator -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$app"
+          mkdir -p ipa/Payload
+          cp -R "$app" ipa/Payload/
+          (cd ipa && zip -qry ../3105-compiled.ipa Payload)
+      - name: Upload IPA artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ios-build
+          name: 3105-compiled-ipa
+          path: 3105-compiled.ipa
+          if-no-files-found: error
+      - name: Upload app artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-app
           path: build/Build/Products/Release-iphonesimulator
           if-no-files-found: error
